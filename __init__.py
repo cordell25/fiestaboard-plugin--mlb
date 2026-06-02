@@ -32,26 +32,27 @@ class mlb(PluginBase):
     
     def fetch_data(self) -> PluginResult:
         """Fetch team scores for all configured teams."""
-        teams = self.config.get("teams", [])
-        if not teams:
+        try:
+            teams = self.config.get("teams", [])
+            if not teams:
+                return PluginResult(
+                    available=False,
+                    error="No teams selected"
+                )
+                
+    #        for team in teams:
+                
             return PluginResult(
-                available=False,
-                error="No teams selected"
+                available=True,
+                data={
+                    "home_team": teams[0],
+                    "away_team": "", 
+                    "current_inning": "",
+                    "current_inning_state": "",
+                    "current_home_score": 3,
+                    "current_away_score": 4
+                },
             )
-            
-#        for team in teams:
-            
-        return PluginResult(
-            available=True,
-            data={
-                "home_team": teams[0],
-                "away_team": "", 
-                "current_inning": "",
-                "current_inning_state": "",
-                "current_home_score": 3,
-                "current_away_score": 4
-            },
-        )
         except Exception as e:
             logger.exception("Error reading timer payload")
             return PluginResult(available=False, error=str(e))

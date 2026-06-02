@@ -47,7 +47,7 @@ class mlb(PluginBase):
                 available=True,
                 data={
                     "home_team": teams[0],
-                    "away_team": "", 
+                    "away_team": self.get_team_id(teams[0]), 
                     "current_inning": "",
                     "current_inning_state": "",
                     "current_home_score": 3,
@@ -57,7 +57,8 @@ class mlb(PluginBase):
         except Exception as e:
             logger.exception("Error reading timer payload")
             return PluginResult(available=False, error=str(e))
-
+            
+    @staticmethod
     def get_team_id(team_name):
         # Mapping based on the JSON response provided
         team_map = {

@@ -41,7 +41,7 @@ class mlb(PluginBase):
                 )
                 
     #        for team in teams:
-                
+            logger.info(self.get_team_id(teams[0]))
             return PluginResult(
                 available=True,
                 data={

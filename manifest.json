@@ -79,7 +79,7 @@
       }
     },
     "simple": {
-      "home_teamx": {
+      "home_team": {
         "description": "Home Team",
         "type": "string",
         "max_length": 10,

@@ -46,7 +46,7 @@ class mlb(PluginBase):
                 available=True,
                 data={
                     "home_team": teams[0],
-                    "away_team": get_team_id(teams[0]), 
+                    "away_team": self.get_team_id(teams[0]), 
                     "current_inning": "",
                     "current_inning_state": "",
                     "current_home_score": 3,

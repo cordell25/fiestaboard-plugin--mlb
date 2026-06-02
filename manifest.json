@@ -120,7 +120,7 @@
         "max_length": 2,
         "group": "game",
         "example": "4"
-      },
+      }
     }
   }
 }

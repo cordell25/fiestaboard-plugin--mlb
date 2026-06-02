@@ -9,7 +9,7 @@ from src.plugins.base import PluginBase, PluginResult
 
 logger = logging.getLogger(__name__)
 
-# Sport name to TheSportsDB identifier mapping
+# DO I NEED THIS?
 SPORT_MAP = {
     "NFL": "American%20Football",
     "Soccer": "Soccer",
@@ -21,39 +21,21 @@ SPORT_MAP = {
 API_BASE_URL_V1 = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId={{teamId}}"
 API_BASE_URL_V2 = "https://statsapi.mlb.com/api/v1/game/{{gamePk}}/linescore"
 
-
 class mlb(PluginBase):
     def __init__(self, manifest: Dict[str, Any]):
         """Initialize the sports scores plugin."""
         super().__init__(manifest)
-        self._cache: Optional[Dict[str, Any]] = None
     
     @property
     def plugin_id(self) -> str:
-        return "sports_scores"
+        return "mlb"
     
     def validate_config(self, config: Dict[str, Any]) -> List[str]:
-        """Validate sports scores configuration."""
+        """Validate MLB configuration."""
         errors = []
-        
-        sports = config.get("sports", [])
-        if not sports:
-            errors.append("At least one sport must be selected")
-        else:
-            valid_sports = set(SPORT_MAP.keys())
-            invalid_sports = [s for s in sports if s not in valid_sports]
-            if invalid_sports:
-                errors.append(f"Invalid sports: {', '.join(invalid_sports)}. Valid options: {', '.join(valid_sports)}")
-        
-        max_games_raw = config.get("max_games_per_sport")
-        if max_games_raw is not None:
-            try:
-                max_games = int(max_games_raw)
-                if max_games < 1 or max_games > 10:
-                    errors.append("max_games_per_sport must be between 1 and 10")
-            except (ValueError, TypeError):
-                errors.append("max_games_per_sport must be a valid number between 1 and 10")
-        
+        teams = config.get("teams", [])
+        if not teams:
+            errors.append("At least one team must be selected")    
         return errors
     
     def fetch_data(self) -> PluginResult:

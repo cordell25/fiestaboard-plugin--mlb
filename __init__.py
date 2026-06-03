@@ -10,8 +10,9 @@ from src.plugins.base import PluginBase, PluginResult
 logger = logging.getLogger(__name__)
 
 # MLB API base URLs
-API_BASE_URL_V1 = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId={{teamId}}"
-API_BASE_URL_V2 = "https://statsapi.mlb.com/api/v1/game/{{gamePk}}/linescore"
+API_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId="
+API_GAME_URL = "https://statsapi.mlb.com/api/v1/game/"
+API_GAME_URL_APPEND = "/linescore"
 
 class mlb(PluginBase):
     def __init__(self, manifest: Dict[str, Any]):
@@ -21,6 +22,10 @@ class mlb(PluginBase):
     @property
     def plugin_id(self) -> str:
         return "mlb"
+
+    # ------------------------------------------------------------------
+    # Config validation
+    # ------------------------------------------------------------------
     
     def validate_config(self, config: Dict[str, Any]) -> List[str]:
         """Validate MLB configuration."""
@@ -29,35 +34,121 @@ class mlb(PluginBase):
         if not teams:
             errors.append("At least one team must be selected")    
         return errors
+
+    # ------------------------------------------------------------------
+    # Data fetching
+    # ------------------------------------------------------------------
     
     def fetch_data(self) -> PluginResult:
         """Fetch team scores for all configured teams."""
-        try:
-            teams = self.config.get("teams", [])
-            if not teams:
-                return PluginResult(
-                    available=False,
-                    error="No teams selected"
-                )
-                
-    #        for team in teams:
-            logger.info("LOOK HERE")
-            logger.info(self.get_team_id(teams[0]))
+      
+        teams = self.config.get("teams", [])
+        if not teams:
             return PluginResult(
-                available=True,
-                data={
-                    "home_team": teams[0],
-                    "away_team": self.get_team_id(teams[0]), 
-                    "current_inning": "",
-                    "current_inning_state": "",
-                    "current_home_score": 3,
-                    "current_away_score": 4
-                },
+                available=False,
+                error="No teams selected"
             )
+        logger.info("LOOK HERE")
+        logger.info(self.get_team_id(teams[0]))
+        team_id = self.get_team_id(teams[0])
+
+        # GET Schedule Information (Needs to only be run every so often, maybe hourly?)
+        try:
+            response = requests.get(
+                f"{API_SCHEDULE_URL}{team_id}",
+                timeout=15,
+            )
+            response.raise_for_status()
+            schedule_payload = response.json()
+            gamePk = schedule_payload.dates[0].games[0].gamePk
         except Exception as e:
-            logger.exception("Error reading timer payload")
-            return PluginResult(available=False, error=str(e))
-            
+            logger.warning("Team Schedule fetch failed for team %s: %s", team_id, e)
+
+        # GET Game Information (Needs to only be run every so often, maybe every 5 minutes?)
+        if gamePk:
+            try:
+                response = requests.get(
+                    f"{API_GAME_URL}{gamePk}{API_GAME_URL_APPEND}",
+                    timeout=15,
+                )
+                response.raise_for_status()
+                game_payload = response.json()
+            except Exception as e:
+                logger.warning("Game fetch failed for game %s: %s", gamePk, e)
+
+        # Set Variables with values from API calls
+        return PluginResult(
+            available=True,
+            data={
+                "home_team": schedule_payload.dates[0].games[0].teams.away.team.name,
+                "away_team": schedule_payload.dates[0].games[0].teams.home.team.name,
+                "stadium": schedule_payload.dates[0].games[0].venue.name,
+                "current_inning": game_payload.currentInning,
+                "current_inning_state": game_payload.inningState,
+                "current_home_score": game_payload.teams.home.runs,
+                "current_away_score": game_payload.teams.away.runs
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Trigger support
+    # ------------------------------------------------------------------
+
+    # def check_triggers(self) -> List[TriggerResult]:
+    #     """Fire triggers for events starting within the configured window."""
+    #     results: List[TriggerResult] = []
+
+    #     # Use cached events if available to avoid extra HTTP calls
+    #     if not self._events_cache:
+    #         try:
+    #             self._events_cache = self._fetch_events()
+    #         except Exception:
+    #             logger.warning("Could not fetch events for trigger check", exc_info=True)
+    #             return results
+
+    #     # minutes_before = int(self.config.get("minutes_before", 15))
+    #     # display_minutes = int(self.config.get("display_duration_minutes", 0))
+    #     display_minutes = 5
+    #     duration_seconds = (
+    #         display_minutes * 60 if display_minutes > 0 else _INDEFINITE_DURATION_SECONDS
+    #     )
+
+    #     tz_str = self.config.get("timezone", "America/Los_Angeles")
+    #     tz = pytz.timezone(tz_str)
+    #     now = datetime.now(tz)
+
+    #     for event in self._events_cache:
+    #         start = event["start_dt"]
+    #         end = event["end_dt"]
+
+    #         minutes_until = (start - now).total_seconds() / 60
+    #         is_now = start <= now <= end
+
+    #         if is_now:
+    #             results.append(TriggerResult(
+    #                 triggered=True,
+    #                 trigger_id=_event_trigger_id(event) + "_now",
+    #                 formatted_lines=self._format_trigger_display(event, now, is_now=True),
+    #                 priority=5,
+    #                 duration_seconds=duration_seconds,
+    #                 data=self._build_data(event, self._events_cache),
+    #             ))
+    #         elif 0 <= minutes_until <= minutes_before:
+    #             results.append(TriggerResult(
+    #                 triggered=True,
+    #                 trigger_id=_event_trigger_id(event),
+    #                 formatted_lines=self._format_trigger_display(event, now, is_now=False),
+    #                 priority=5,
+    #                 duration_seconds=duration_seconds,
+    #                 data=self._build_data(event, self._events_cache),
+    #             ))
+
+    #     return results
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
     @staticmethod
     def get_team_id(team_name):
         # Mapping based on the JSON response provided

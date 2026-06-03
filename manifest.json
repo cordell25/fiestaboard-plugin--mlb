@@ -59,6 +59,19 @@
         },
         "uniqueItems": true
       },
+      "timezone": {
+        "type": "string",
+        "title": "Timezone",
+        "description": "IANA timezone for interpreting all-day events and formatting display times.",
+        "default": "America/Los_Angeles",
+        "ui:widget": "timezone"
+      },
+      "trigger_page_id": {
+        "type": "string",
+        "title": "Trigger Page",
+        "description": "Page to display when a calendar event trigger fires. Leave blank to use the built-in event display. The page must be a template page using {{calendar_sub.*}} variables.",
+        "ui:widget": "page-picker"
+      },
       "refresh_seconds": {
         "type": "integer",
         "title": "Refresh Interval (seconds)",
@@ -92,6 +105,13 @@
         "max_length": 10,
         "group": "game",
         "example": "CUBS"
+      },
+      "stadium": {
+        "description": "Stadium",
+        "type": "string",
+        "max_length": 15,
+        "group": "game",
+        "example": "Wrigley Field"
       },
       "current_inning": {
         "description": "Current Inning of Live Game",

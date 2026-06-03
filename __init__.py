@@ -48,11 +48,20 @@ class mlb(PluginBase):
                 available=False,
                 error="No teams selected"
             )
+        
         logger.info("LOOK HERE")
         logger.info(self.get_team_id(teams[0]))
         team_id = self.get_team_id(teams[0])
 
-        # GET Schedule Information (Needs to only be run every so often, maybe hourly?)
+        if not team_id:
+            return PluginResult(available=False, error=f"Invalid team name: {teams[0]}")
+
+        # Initialize variables for safe scoping
+        game_pk = None
+        schedule_payload = None
+        game_payload = None
+
+        # GET Schedule Information
         try:
             response = requests.get(
                 f"{API_SCHEDULE_URL}{team_id}",
@@ -60,90 +69,52 @@ class mlb(PluginBase):
             )
             response.raise_for_status()
             schedule_payload = response.json()
-            gamePk = schedule_payload.dates[0].games[0].gamePk
+            
+            # Verify a game exists for today in the payload
+            if schedule_payload.get("dates") and schedule_payload["dates"][0].get("games"):
+                game_pk = schedule_payload["dates"][0]["games"][0]["gamePk"]
+            else:
+                return PluginResult(available=False, error="No games scheduled for this team today.")
+                
         except Exception as e:
             logger.warning("Team Schedule fetch failed for team %s: %s", team_id, e)
+            return PluginResult(available=False, error=f"Schedule fetch failed: {e}")
 
-        # GET Game Information (Needs to only be run every so often, maybe every 5 minutes?)
-        if gamePk:
+        # GET Game Information
+        if game_pk:
             try:
                 response = requests.get(
-                    f"{API_GAME_URL}{gamePk}{API_GAME_URL_APPEND}",
+                    f"{API_GAME_URL}{game_pk}{API_GAME_URL_APPEND}",
                     timeout=15,
                 )
                 response.raise_for_status()
                 game_payload = response.json()
             except Exception as e:
-                logger.warning("Game fetch failed for game %s: %s", gamePk, e)
+                logger.warning("Game fetch failed for game %s: %s", game_pk, e)
+                return PluginResult(available=False, error=f"Game fetch failed: {e}")
 
-        # Set Variables with values from API calls
-        return PluginResult(
-            available=True,
-            data={
-                "home_team": schedule_payload.dates[0].games[0].teams.away.team.name,
-                "away_team": schedule_payload.dates[0].games[0].teams.home.team.name,
-                "stadium": schedule_payload.dates[0].games[0].venue.name,
-                "current_inning": game_payload.currentInning,
-                "current_inning_state": game_payload.inningState,
-                "current_home_score": game_payload.teams.home.runs,
-                "current_away_score": game_payload.teams.away.runs
-            },
-        )
+        # Final check to ensure we have all required data before parsing
+        if not schedule_payload or not game_payload:
+            return PluginResult(available=False, error="Incomplete game data received from API.")
 
-    # ------------------------------------------------------------------
-    # Trigger support
-    # ------------------------------------------------------------------
-
-    # def check_triggers(self) -> List[TriggerResult]:
-    #     """Fire triggers for events starting within the configured window."""
-    #     results: List[TriggerResult] = []
-
-    #     # Use cached events if available to avoid extra HTTP calls
-    #     if not self._events_cache:
-    #         try:
-    #             self._events_cache = self._fetch_events()
-    #         except Exception:
-    #             logger.warning("Could not fetch events for trigger check", exc_info=True)
-    #             return results
-
-    #     # minutes_before = int(self.config.get("minutes_before", 15))
-    #     # display_minutes = int(self.config.get("display_duration_minutes", 0))
-    #     display_minutes = 5
-    #     duration_seconds = (
-    #         display_minutes * 60 if display_minutes > 0 else _INDEFINITE_DURATION_SECONDS
-    #     )
-
-    #     tz_str = self.config.get("timezone", "America/Los_Angeles")
-    #     tz = pytz.timezone(tz_str)
-    #     now = datetime.now(tz)
-
-    #     for event in self._events_cache:
-    #         start = event["start_dt"]
-    #         end = event["end_dt"]
-
-    #         minutes_until = (start - now).total_seconds() / 60
-    #         is_now = start <= now <= end
-
-    #         if is_now:
-    #             results.append(TriggerResult(
-    #                 triggered=True,
-    #                 trigger_id=_event_trigger_id(event) + "_now",
-    #                 formatted_lines=self._format_trigger_display(event, now, is_now=True),
-    #                 priority=5,
-    #                 duration_seconds=duration_seconds,
-    #                 data=self._build_data(event, self._events_cache),
-    #             ))
-    #         elif 0 <= minutes_until <= minutes_before:
-    #             results.append(TriggerResult(
-    #                 triggered=True,
-    #                 trigger_id=_event_trigger_id(event),
-    #                 formatted_lines=self._format_trigger_display(event, now, is_now=False),
-    #                 priority=5,
-    #                 duration_seconds=duration_seconds,
-    #                 data=self._build_data(event, self._events_cache),
-    #             ))
-
-    #     return results
+        try:
+            game_info = schedule_payload["dates"][0]["games"][0]
+            
+            return PluginResult(
+                available=True,
+                data={
+                    "away_team": game_info["teams"]["away"]["team"]["name"],
+                    "home_team": game_info["teams"]["home"]["team"]["name"],
+                    "stadium": game_info["venue"]["name"],
+                    "current_inning": game_payload.get("currentInning"),
+                    "current_inning_state": game_payload.get("inningState"),
+                    "current_away_score": game_payload["teams"]["away"].get("runs", 0),
+                    "current_home_score": game_payload["teams"]["home"].get("runs", 0)
+                },
+            )
+        except KeyError as e:
+            logger.error("Failed to parse API structure: %s", e)
+            return PluginResult(available=False, error="Data parsing error.")
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -185,11 +156,7 @@ class mlb(PluginBase):
             "New York Mets": 121
         }
         
-        # Returns the ID if found, otherwise returns None
         return team_map.get(team_name)
         
-    def validate_config(self, config: Dict[str, Any]) -> List[str]:
-        return []
-
     def cleanup(self) -> None:
         pass

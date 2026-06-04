@@ -1,7 +1,7 @@
 {
   "id": "mlb",
   "name": "MLB",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Track MLB Game Scores",
   "author": "Andrew Cordell",
   "icon": "trophy",
@@ -116,7 +116,7 @@
       "home_team_color": {
         "description": "Home Team Primary Color",
         "type": "string",
-        "max_length": 8,
+        "max_length": 6,
         "group": "game",
         "example": "red"
       },
@@ -144,7 +144,7 @@
       "away_team_color": {
         "description": "Away Team Primary Color",
         "type": "string",
-        "max_length": 8,
+        "max_length": 6,
         "group": "game",
         "example": "yellow"
       },

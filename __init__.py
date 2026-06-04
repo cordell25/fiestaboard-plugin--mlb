@@ -170,7 +170,9 @@ class mlb(PluginBase):
                     "away_team_abbr": away_cached.get("abbreviation", "AWY"),
                     "away_team_club_name": away_cached.get("club_name", "Away"),
                     "away_team_color": away_cached.get("color", "white"),
-                    
+
+                    "game_scheduled_start": game_info["gameDate"]
+                    "game_status_code": game_info["status"]["statusCode"]
                     "stadium": game_info.get("venue", {}).get("name", "Unknown Field"),
                     "current_inning": game_payload.get("currentInning"),
                     "current_inning_state": game_payload.get("inningState"),

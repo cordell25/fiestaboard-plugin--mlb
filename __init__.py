@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
+import pytz
 import logging
 import requests
 
@@ -87,6 +88,10 @@ class mlb(PluginBase):
     
     def fetch_data(self) -> PluginResult:
         """Fetch team scores for all configured teams."""
+        user_timezone = self.config.get("timezone", "America/Los_Angeles")
+        tz = pytz.timezone(user_timezone)
+        now = datetime.now(tz)
+        
         teams = self.config.get("teams", [])
         if not teams:
             return PluginResult(available=False, error="No teams selected")
@@ -143,6 +148,14 @@ class mlb(PluginBase):
 
         try:
             game_info = schedule_payload["dates"][0]["games"][0]
+
+            # Time conversion and tracking math
+            utc_start = datetime.strptime(game_info["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc)
+            local_start = utc_start.astimezone(tz)
+            scheduled_game_start = local_start.strftime("%I:%M %p").lstrip("0")
+            
+            time_delta = local_start - now
+            minutes_until_game = int(time_delta.total_seconds() / 60)
             
             # Extract live IDs from the schedule
             away_id = game_info["teams"]["away"]["team"]["id"]
@@ -171,7 +184,8 @@ class mlb(PluginBase):
                     "away_team_club_name": away_cached.get("club_name", "Away"),
                     "away_team_color": away_cached.get("color", "white"),
 
-                    "game_scheduled_start": game_info["gameDate"],
+                    "game_scheduled_start": scheduled_game_start,
+                    "minutes_until_game": max(0, minutes_until_game), # Keeps it capped at 0 once the game starts
                     "game_status_code": game_info["status"]["statusCode"],
                     "stadium": game_info.get("venue", {}).get("name", "Unknown Field"),
                     "current_inning": game_payload.get("currentInning"),

@@ -99,6 +99,13 @@
         "group": "game",
         "example": "2026-06-04T15:10:00Z"
       },
+      "minutes_until_game": {
+        "description": "Minutes until scheduled game start",
+        "type": "integer",
+        "max_length": 4,
+        "group": "game",
+        "example": "67"
+      },
       "game_status_code": {
         "description": "F=Final, P=PreGame",
         "type": "string",

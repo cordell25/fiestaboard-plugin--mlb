@@ -113,6 +113,13 @@
         "group": "game",
         "example": "Mariners"
       },
+      "home_team_color": {
+        "description": "Home Team Primary Color",
+        "type": "string",
+        "max_length": 8,
+        "group": "game",
+        "example": "red"
+      },
       "away_team_name": {
         "description": "Away Team",
         "type": "string",
@@ -133,6 +140,13 @@
         "max_length": 20,
         "group": "game",
         "example": "Mariners"
+      },
+      "away_team_color": {
+        "description": "Away Team Primary Color",
+        "type": "string",
+        "max_length": 8,
+        "group": "game",
+        "example": "yellow"
       },
       "stadium": {
         "description": "Stadium",

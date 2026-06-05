@@ -89,8 +89,8 @@ class mlb(PluginBase):
     def fetch_data(self) -> PluginResult:
         """Fetch team scores for all configured teams."""
 
-        # Default values if no game is scheduled today
-        data={
+        # Default values if no game is scheduled today or API drops offline
+        fallback_data = {
             "home_team_name": "",
             "home_team_abbr": "",
             "home_team_club_name": "",
@@ -108,7 +108,6 @@ class mlb(PluginBase):
             "current_inning": 0,
             "current_inning_state": "",
             
-            # Boxscore statistics safely resolving to 0 when unfetched or pregame
             "current_home_score": 0,
             "current_home_hits": 0,
             "current_home_errors": 0,
@@ -116,9 +115,8 @@ class mlb(PluginBase):
             "current_away_score": 0,
             "current_away_hits": 0,
             "current_away_errors": 0
-        },
+        }
 
-        
         user_timezone = self.config.get("timezone", "America/Los_Angeles")
         tz = pytz.timezone(user_timezone)
         now = datetime.now(tz)
@@ -156,15 +154,15 @@ class mlb(PluginBase):
                 game_info = schedule_payload["dates"][0]["games"][0]
                 game_pk = game_info["gamePk"]
             else:
-                return PluginResult(available=True, data=data)
+                return PluginResult(available=True, data=fallback_data)
                 
         except Exception as e:
-            logger.warning("Schedule fetch failed: %s", e)
-            return PluginResult(available=True, data=data)
+            logger.warning("Schedule fetch failed: %s. Emitting safe fallback data.", e)
+            return PluginResult(available=True, data=fallback_data)
 
         try:
             # Time conversion and tracking math
-            utc_start = datetime.strptime(game_info["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc)
+            utc_start = datetime.strptime(game_info["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
             local_start = utc_start.astimezone(tz)
             scheduled_game_start = local_start.strftime("%I:%M %p").lstrip("0")
             

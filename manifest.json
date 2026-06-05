@@ -59,18 +59,59 @@
         },
         "uniqueItems": true
       },
+      "trigger_game_start": {
+        "type": "boolean",
+        "title": "Trigger Page Display for Upcoming Game",
+        "default": false
+      },
+      "trigger_game_start_minutes_prior": {
+        "type": "integer",
+        "title": "Minutes Prior",
+        "description": "How many minutes prior to scheduled start time of upcoming game to trigger Page display",
+        "default": 60,
+        "minimum": 0
+      },
+      "trigger_game_start_id": {
+        "type": "string",
+        "title": "Game Start - Trigger Page",
+        "description": "Page to display when a game is about to start. The page must be a template page using {{mlb.*}} variables.",
+        "ui:widget": "page-picker"
+      },
+      "trigger_game_score_updates": {
+        "type": "boolean",
+        "title": "Trigger Page for ongoing score updates (trigger starts at beginning of game and ends once game completes",
+        "default": false
+      },
+      "trigger_game_score_updates_id": {
+        "type": "string",
+        "title": "Ongoing Scoreboard - Trigger Page",
+        "description": "Page to display while a game is in progress. The page must be a template page using {{mlb.*}} variables.",
+        "ui:widget": "page-picker"
+      },
+      "trigger_game_complete": {
+        "type": "boolean",
+        "title": "Trigger Page for completed game (trigger starts at conclusion of game",
+        "default": false
+      },
+      "trigger_game_complete_id": {
+        "type": "string",
+        "title": "Ongoing Scoreboard - Trigger Page",
+        "description": "Page to display while a game is completed. The page must be a template page using {{mlb.*}} variables.",
+        "ui:widget": "page-picker"
+      },
+      "trigger_game_complete_minutes_to_display": {
+        "type": "integer",
+        "title": "How long to display the Page once the game is completed",
+        "description": "How many minutes the triggered page is displayed for",
+        "default": 60,
+        "minimum": 0
+      },
       "timezone": {
         "type": "string",
         "title": "Timezone",
         "description": "IANA timezone for interpreting all-day events and formatting display times.",
         "default": "America/Los_Angeles",
         "ui:widget": "timezone"
-      },
-      "trigger_page_id": {
-        "type": "string",
-        "title": "Trigger Page",
-        "description": "Page to display when a calendar event trigger fires. Leave blank to use the built-in event display. The page must be a template page using {{calendar_sub.*}} variables.",
-        "ui:widget": "page-picker"
       },
       "refresh_seconds": {
         "type": "integer",

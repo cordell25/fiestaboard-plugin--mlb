@@ -1,49 +1,54 @@
-# Timer Plugin
-Set a Timer (in minutes or seconds) and display a visual status indicator of the remaining time, initiated via a POST from an external source.
+# MLB Scores Plugin
+Track live Major League Baseball game scores, team metrics, schedules, and custom board colors for your configured teams.
 
-<img width="550" height="222" alt="Timer - In Progress" src="./docs/Timer - In Progress.png" />
+## Example Page Displays
+Scoreboard
+
+Current Inning Display
 
 ## Overview
-The Timer plugin exposes a local HTTP endpoint at /api/plugins/timer/receive. Any system can POST a JSON payload to set the Timer which will immediately start running. Optionally verify requests with an HMAC secret.
-
-## API (To Start Timer)
-URL: fiestapi.local:4420/api/plugins/timer/receive
-
-Body:
-- **duration** (int, required): How long to set the Timer for
-- _**measure**_ (str, optional): What does the 'duration' represent: "minutes" | "seconds" (default is set in plugin config)
-
-```
-{
-    "duration": 4,
-    "measure": "minutes"
-}
-```
+The MLB Scores plugin automatically polls the official MLB backend to pull real-time linescore data (runs, hits, errors, current inning, and status) for your selected team. To optimize network usage, the plugin aggressively caches league-wide team profiles on startup and only calls the active live game endpoint starting 15 minutes prior to first pitch until the game goes final.
 
 ## Configuration
 
 | Setting | Name | Description | Required |
 |---|---|---|---|
-| `secret` | HMAC Secret | Optional secret to verify incoming webhooks (leave blank to disable). | No |
-| `status_color` | Flap Color | Flap color for 'status_display' variable. Used to display what % of time remains on the timer | Yes |
-| `status_color_completed` | Flap Color (Completed) | Flap color for 'status_display_padded' variable. Used to display what % of time has surpassed on the timer so the status bar remains the same length | Yes |
-| `max_status_flaps` | Max Status Flaps | The maximum number of flaps used to display the timer status. Used to make sure the status bar fits on the Vestaboard page without overflowing a row | Yes |
-| `default_measure` | Default Timer Value Qualifier | Expected qualifier for the 'duration' value received via API ("minutes" or "seconds") | No |
+| `enabled` | Enabled | Toggle whether to activate game tracking. | No |
+| `teams` | Teams to track | Selected MLB team(s) to monitor game data and match progress for. | Yes |
+| `timezone` | Timezone | IANA timezone database string used for interpreting start times and localization. | No |
+| `trigger_page_id` | Trigger Page | Custom template page using layout variables to display when a game trigger fires. | No |
+| `refresh_seconds` | Refresh Interval (seconds) | Frequency of fetching live game updates (minimum 60 seconds). | No |
 
 ## Template Variables
 
+### Game Information
 | Variable | Description | Example |
 |---|---|---|
-| `timer.start_time` | Date & Time of when the Timer begins (ISO format) | `2025-06-15T00:00:00` |
-| `timer.end_time` | Date & Time of when the Timer ends (ISO format) | `2025-06-15T00:00:00` |
-| `timer.duration` | Integer value of how long the Timer is set for | `5` |
-| `timer.measure` | Unit of time measure for the timer | `minutes` |
-| `timer.status_max_length` | How many status blocks represent the full amount of time | `13` |
-| `timer.status_current_length` | Current status blocks representing the time remaining | `10` |
-| `timer.status_display` | Visual display of what % of time remains on the timer | `🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨` |
-| `timer.status_display_padded` | Visual display of time remaining with padding to maintain bar length | `🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟪🟪🟪` |
-| `timer.minutes_remaining` | Minutes remaining | `4` |
-| `timer.seconds_remaining` | Seconds remaining | `180` |
-| `timer.status_block_duration` | How much time elapses (in seconds) before another status block is removed | `15` |
-| `timer.last_updated` | When the last timer API call was received | `2026-05-01 12:00` |
-| `timer.timer_in_flight` | Is the timer currently counting down? | `Yes` |
+| `mlb.game_scheduled_start` | Localized game start time formatted to the configured timezone | `7:10 PM` |
+| `mlb.minutes_until_game` | Integer minutes remaining until the scheduled first pitch | `45` |
+| `mlb.game_status_code` | Raw official status code tracking play state (`F` = Final, `P` = Pre-Game, `I` = In-Progress) | `I` |
+| `mlb.stadium` | Venue name where the scheduled game is taking place | `Wrigley Field` |
+| `mlb.current_inning` | The current frame integer value of an active live match | `4` |
+| `mlb.current_inning_state` | Current half-inning positioning description | `BOTTOM` |
+
+### Team Details & Custom Colors
+| Variable | Description | Example |
+|---|---|---|
+| `mlb.home_team_name` | Full name of the home franchise | `Colorado Rockies` |
+| `mlb.home_team_abbr` | Official 3-letter abbreviation code for the home team | `COL` |
+| `mlb.home_team_club_name` | Common club/nickname identifier for the home team | `Rockies` |
+| `mlb.home_team_color` | Vestaboard-compatible color block value assigned to the home franchise | `purple` |
+| `mlb.away_team_name` | Full name of the visiting franchise | `Chicago Cubs` |
+| `mlb.away_team_abbr` | Official 3-letter abbreviation code for the visiting team | `CHC` |
+| `mlb.away_team_club_name` | Common club/nickname identifier for the visiting team | `Cubs` |
+| `mlb.away_team_color` | Vestaboard-compatible color block value assigned to the visiting franchise | `blue` |
+
+### Boxscore Statistics
+| Variable | Description | Example |
+|---|---|---|
+| `mlb.current_home_score` | Total runs accumulated by the home team | `5` |
+| `mlb.current_home_hits` | Total hits recorded by the home team | `9` |
+| `mlb.current_home_errors` | Total errors committed by the home team | `1` |
+| `mlb.current_away_score` | Total runs accumulated by the away team | `3` |
+| `mlb.current_away_hits` | Total hits recorded by the away team | `6` |
+| `mlb.current_away_errors` | Total errors committed by the away team | `0` |

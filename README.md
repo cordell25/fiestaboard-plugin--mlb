@@ -26,7 +26,7 @@ The MLB Scores plugin automatically polls the official MLB backend to pull real-
 |---|---|---|
 | `mlb.game_scheduled_start` | Localized game start time formatted to the configured timezone | `7:10 PM` |
 | `mlb.minutes_until_game` | Integer minutes remaining until the scheduled first pitch | `45` |
-| `mlb.game_status_code` | Raw official status code tracking play state (`F` = Final, `P` = Pre-Game, `I` = In-Progress) | `I` |
+| `mlb.game_status_code` | Raw official status code tracking play state (`F` = Final, `P` = Pre-Game, `I` = In-Progress, `0` = No Game) | `I` |
 | `mlb.stadium` | Venue name where the scheduled game is taking place | `Wrigley Field` |
 | `mlb.current_inning` | The current frame integer value of an active live match | `4` |
 | `mlb.current_inning_state` | Current half-inning positioning description | `BOTTOM` |

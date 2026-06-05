@@ -88,6 +88,37 @@ class mlb(PluginBase):
     
     def fetch_data(self) -> PluginResult:
         """Fetch team scores for all configured teams."""
+
+        # Default values if no game is scheduled today
+        data={
+            "home_team_name": "",
+            "home_team_abbr": "",
+            "home_team_club_name": "",
+            "home_team_color": "black",
+            
+            "away_team_name": "",
+            "away_team_abbr": "",
+            "away_team_club_name": "",
+            "away_team_color": "black",
+
+            "game_scheduled_start": "",
+            "minutes_until_game": 0,
+            "game_status_code": "0",
+            "stadium": "",
+            "current_inning": 0,
+            "current_inning_state": "",
+            
+            # Boxscore statistics safely resolving to 0 when unfetched or pregame
+            "current_home_score": 0,
+            "current_home_hits": 0,
+            "current_home_errors": 0,
+            
+            "current_away_score": 0,
+            "current_away_hits": 0,
+            "current_away_errors": 0
+        },
+
+        
         user_timezone = self.config.get("timezone", "America/Los_Angeles")
         tz = pytz.timezone(user_timezone)
         now = datetime.now(tz)
@@ -125,11 +156,11 @@ class mlb(PluginBase):
                 game_info = schedule_payload["dates"][0]["games"][0]
                 game_pk = game_info["gamePk"]
             else:
-                return PluginResult(available=False, error="No games scheduled today.")
+                return PluginResult(available=True, data=data)
                 
         except Exception as e:
             logger.warning("Schedule fetch failed: %s", e)
-            return PluginResult(available=False, error=f"Schedule fetch failed: {e}")
+            return PluginResult(available=True, data=data)
 
         try:
             # Time conversion and tracking math

@@ -122,7 +122,8 @@ class mlb(PluginBase):
             schedule_payload = response.json()
             
             if schedule_payload.get("dates") and schedule_payload["dates"][0].get("games"):
-                game_pk = schedule_payload["dates"][0]["games"][0]["gamePk"]
+                game_info = schedule_payload["dates"][0]["games"][0]
+                game_pk = game_info["gamePk"]
             else:
                 return PluginResult(available=False, error="No games scheduled today.")
                 
@@ -130,25 +131,7 @@ class mlb(PluginBase):
             logger.warning("Schedule fetch failed: %s", e)
             return PluginResult(available=False, error=f"Schedule fetch failed: {e}")
 
-        # GET Game Information (linescore payload containing stats)
-        if game_pk:
-            try:
-                response = requests.get(
-                    f"{API_GAME_URL}{game_pk}{API_GAME_URL_APPEND}",
-                    timeout=15,
-                )
-                response.raise_for_status()
-                game_payload = response.json()
-            except Exception as e:
-                logger.warning("Game linescore fetch failed: %s", e)
-                return PluginResult(available=False, error=f"Game fetch failed: {e}")
-
-        if not schedule_payload or not game_payload:
-            return PluginResult(available=False, error="Incomplete live game data.")
-
         try:
-            game_info = schedule_payload["dates"][0]["games"][0]
-
             # Time conversion and tracking math
             utc_start = datetime.strptime(game_info["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc)
             local_start = utc_start.astimezone(tz)
@@ -165,10 +148,42 @@ class mlb(PluginBase):
             away_cached = self._teams.get(away_id, {})
             home_cached = self._teams.get(home_id, {})
 
-            # Extract team objects safely from linescore teams structure
-            linescore_teams = game_payload.get("teams", {})
-            away_stats = linescore_teams.get("away", {})
-            home_stats = linescore_teams.get("home", {})
+            game_status_code = game_info["status"]["statusCode"]
+
+            # Gating Rule: Only call game linescore API if within 15 minutes of start AND not finished
+            should_fetch_live_data = (minutes_until_game <= 15) and (game_status_code != "F")
+
+            # Initialize safe default structures for linescore parameters
+            away_stats = {}
+            home_stats = {}
+            current_inning = None
+            current_inning_state = None
+
+            if game_pk and should_fetch_live_data:
+                logger.info("Game active or pre-game window open. Fetching linescore data for game %s", game_pk)
+                try:
+                    response = requests.get(
+                        f"{API_GAME_URL}{game_pk}{API_GAME_URL_APPEND}",
+                        timeout=15,
+                    )
+                    response.raise_for_status()
+                    game_payload = response.json()
+                    
+                    # Safely map objects from active linescore
+                    linescore_teams = game_payload.get("teams", {})
+                    away_stats = linescore_teams.get("away", {})
+                    home_stats = linescore_teams.get("home", {})
+                    current_inning = game_payload.get("currentInning")
+                    current_inning_state = game_payload.get("inningState")
+                    
+                except Exception as e:
+                    logger.warning("Game linescore fetch failed: %s. Falling back to schedule metrics.", e)
+            else:
+                logger.info("Outside of active live window (Minutes until: %d, Status: %s). Skipping linescore call.", minutes_until_game, game_status_code)
+                # If the game is final ('F'), we parse final scores directly out of the schedule payload instead of linescore
+                if game_status_code == "F":
+                    away_stats = {"runs": game_info["teams"]["away"].get("score", 0)}
+                    home_stats = {"runs": game_info["teams"]["home"].get("score", 0)}
 
             # Return dynamic values mapping 1:1 to variables in manifest.json
             return PluginResult(
@@ -185,13 +200,13 @@ class mlb(PluginBase):
                     "away_team_color": away_cached.get("color", "white"),
 
                     "game_scheduled_start": scheduled_game_start,
-                    "minutes_until_game": max(0, minutes_until_game), # Keeps it capped at 0 once the game starts
-                    "game_status_code": game_info["status"]["statusCode"],
+                    "minutes_until_game": max(0, minutes_until_game),
+                    "game_status_code": game_status_code,
                     "stadium": game_info.get("venue", {}).get("name", "Unknown Field"),
-                    "current_inning": game_payload.get("currentInning"),
-                    "current_inning_state": game_payload.get("inningState"),
+                    "current_inning": current_inning,
+                    "current_inning_state": current_inning_state,
                     
-                    # Boxscore statistics matching manifest types
+                    # Boxscore statistics safely resolving to 0 when unfetched or pregame
                     "current_home_score": home_stats.get("runs", 0),
                     "current_home_hits": home_stats.get("hits", 0),
                     "current_home_errors": home_stats.get("errors", 0),
@@ -212,7 +227,6 @@ class mlb(PluginBase):
     @staticmethod
     def get_configured_team_id_and_color(team_name: str) -> Optional[Dict[str, Any]]:
         """Translates your manifest selection string into an initial team ID and Vestaboard color mapping."""
-        # Using Vestaboard standard color naming blocks: red, orange, yellow, green, blue, purple, white
         team_map = {
             "Arizona Diamondbacks": {"id": 109, "color": "red"},
             "Athletics": {"id": 133, "color": "green"},

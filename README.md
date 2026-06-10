@@ -3,6 +3,7 @@ Track live Major League Baseball game scores, team metrics, schedules, and custo
 
 ## Example Page Displays
 Upcoming Game
+<img width="550" height="222" alt="Upcoming Game" src="./docs/upcoming_game.png" />
 
 Scoreboard
 

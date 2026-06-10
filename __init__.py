@@ -1,7 +1,7 @@
 #MLB - Track Team Games / Scores
 
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import pytz
 import logging
 import requests
@@ -22,6 +22,10 @@ class mlb(PluginBase):
         super().__init__(manifest)
         # Fast lookup map: { team_id: { "name": "...", "abbreviation": "...", "color": "..." } }
         self._teams: Dict[int, Dict[str, Any]] = {}
+        
+        # Schedule tracking cache states
+        self._last_schedule_fetch: Optional[datetime] = None
+        self._cached_schedule_payload: Optional[Dict[str, Any]] = None
     
     @property
     def plugin_id(self) -> str:
@@ -77,6 +81,10 @@ class mlb(PluginBase):
             
             self._teams = new_teams_map
             logger.info("Successfully cached %d MLB teams by ID with colors.", len(self._teams))
+            
+            # Clear schedule cache on config change to ensure instant refresh if team changed
+            self._last_schedule_fetch = None
+            self._cached_schedule_payload = None
             
         except Exception as e:
             logger.error("Failed to populate league team map: %s", e)
@@ -136,30 +144,65 @@ class mlb(PluginBase):
             return PluginResult(available=False, error=f"Invalid configured team: {teams[0]}")
         configured_team_id = team_meta["id"]
 
-        # Initialize variables for safe scoping
-        game_pk = None
-        schedule_payload = None
-        game_payload = None
-
-        # GET Schedule Information
-        try:
-            response = requests.get(
-                f"{API_SCHEDULE_URL}{configured_team_id}",
-                timeout=15,
-            )
-            response.raise_for_status()
-            schedule_payload = response.json()
+        # --------------------------------------------------------------
+        # SMART CACHING GATE FOR SCHEDULE API
+        # --------------------------------------------------------------
+        skip_schedule_api_call = False
+        
+        if self._cached_schedule_payload and self._last_schedule_fetch:
+            # Let's see how many minutes have passed since we last asked the schedule API
+            time_since_last_fetch = now - self._last_schedule_fetch
+            minutes_since_fetch = time_since_last_fetch.total_seconds() / 60
             
-            if schedule_payload.get("dates") and schedule_payload["dates"][0].get("games"):
-                game_info = schedule_payload["dates"][0]["games"][0]
-                game_pk = game_info["gamePk"]
-            else:
-                return PluginResult(available=True, data=fallback_data)
+            if self._cached_schedule_payload.get("dates") and self._cached_schedule_payload["dates"][0].get("games"):
+                temp_game = self._cached_schedule_payload["dates"][0]["games"][0]
+                temp_utc_start = datetime.strptime(temp_game["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+                temp_local_start = temp_utc_start.astimezone(tz)
+                temp_minutes_until = int((temp_local_start - now).total_seconds() / 60)
                 
-        except Exception as e:
-            logger.warning("Schedule fetch failed: %s. Emitting safe fallback data.", e)
+                # If the game is more than 15 mins away AND we fetched less than 10 mins ago, reuse cache
+                if temp_minutes_until > 15 and minutes_since_fetch < 10:
+                    skip_schedule_api_call = True
+            else:
+                # No games scheduled today, only recheck the schedule endpoint every 10 minutes
+                if minutes_since_fetch < 10:
+                    skip_schedule_api_call = True
+
+        # GET or Reuse Schedule Information
+        if skip_schedule_api_call:
+            logger.info("Reusing cached schedule payload to preserve API overhead.")
+            schedule_payload = self._cached_schedule_payload
+        else:
+            logger.info("Fetching fresh schedule payload from MLB API.")
+            try:
+                response = requests.get(
+                    f"{API_SCHEDULE_URL}{configured_team_id}",
+                    timeout=15,
+                )
+                response.raise_for_status()
+                schedule_payload = response.json()
+                
+                # Update cache variables on successful hit
+                self._cached_schedule_payload = schedule_payload
+                self._last_schedule_fetch = now
+                
+            except Exception as e:
+                logger.warning("Schedule fetch failed: %s. Trying fallback to cache or blank template.", e)
+                if self._cached_schedule_payload:
+                    schedule_payload = self._cached_schedule_payload
+                else:
+                    return PluginResult(available=True, data=fallback_data)
+
+        # Confirm if any games actually exist for today
+        if schedule_payload.get("dates") and schedule_payload["dates"][0].get("games"):
+            game_info = schedule_payload["dates"][0]["games"][0]
+            game_pk = game_info["gamePk"]
+        else:
             return PluginResult(available=True, data=fallback_data)
 
+        # --------------------------------------------------------------
+        # LIVE DATA AND TIME PROCESS
+        # --------------------------------------------------------------
         try:
             # Time conversion and tracking math
             utc_start = datetime.strptime(game_info["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)

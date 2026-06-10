@@ -2,12 +2,15 @@
 Track live Major League Baseball game scores, team metrics, schedules, and custom board colors for your configured teams.
 
 ## Example Page Displays
+Upcoming Game
+
 Scoreboard
 
 Current Inning Display
 
 ## Overview
-The MLB Scores plugin automatically polls the official MLB backend to pull real-time linescore data (runs, hits, errors, current inning, and status) for your selected team. To optimize network usage, the plugin aggressively caches league-wide team profiles on startup and only calls the active live game endpoint starting 15 minutes prior to first pitch until the game goes final.
+The MLB Scores plugin automatically polls the official MLB backend to pull real-time game schedule and linescore data (runs, hits, errors, current inning, and status) for your selected team.
+To optimize network usage, the plugin caches league-wide team profiles on configuration. It throttles the schedule API to check at most once every 10 minutes, lifting the restriction to real-time updates only when a game is within 15 minutes of first pitch or actively in progress (based on the configured Refresh Interval, min 60 seconds). The live linescore endpoint is skipped entirely once a game goes final.
 
 ## Configuration
 

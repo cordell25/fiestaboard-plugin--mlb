@@ -20,7 +20,7 @@
       "teams": {
         "type": "array",
         "title": "Teams to track",
-        "description": "Select sports to display scores for",
+        "description": "Select sports to display sports scores for",
         "minItems": 1,
         "items": {
           "type": "string",
@@ -79,7 +79,7 @@
       },
       "trigger_game_score_updates": {
         "type": "boolean",
-        "title": "Trigger Page for ongoing score updates (trigger starts at beginning of game and ends once game completes",
+        "title": "Trigger Page for ongoing score updates",
         "default": false
       },
       "trigger_game_score_updates_id": {
@@ -90,12 +90,12 @@
       },
       "trigger_game_complete": {
         "type": "boolean",
-        "title": "Trigger Page for completed game (trigger starts at conclusion of game",
+        "title": "Trigger Page for completed game",
         "default": false
       },
       "trigger_game_complete_id": {
         "type": "string",
-        "title": "Ongoing Scoreboard - Trigger Page",
+        "title": "Game Completed - Trigger Page",
         "description": "Page to display while a game is completed. The page must be a template page using {{mlb.*}} variables.",
         "ui:widget": "page-picker"
       },
@@ -274,7 +274,7 @@
         "example": "1"
       }
     }
-  }
+  },
   "demo": {
     "flagship": {
       "name": "MLB - Upcoming Game - Demo - Flagship",

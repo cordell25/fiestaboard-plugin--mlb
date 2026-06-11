@@ -1,7 +1,7 @@
 {
   "id": "mlb",
   "name": "MLB",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Track MLB Game Scores",
   "author": "Andrew Cordell",
   "icon": "trophy",
@@ -273,6 +273,67 @@
         "group": "game",
         "example": "1"
       }
+    }
+  }
+  "demo": {
+    "flagship": {
+      "name": "MLB - Upcoming Game - Demo - Flagship",
+      "template": [
+        "{{mlb.stadium}}",
+        "",
+        "{{mlb.away_team_club_name}} @\u00a0{{mlb.home_team_club_name}}\u00a0IN {{= FLOOR(mlb.minutes_until_game/60) }}H {{= MOD(mlb.minutes_until_game,60) }}M",
+        "",
+        "",
+        ""
+      ],
+      "line_metadata": [
+        {
+          "alignment": "center",
+          "wrap": false
+        },
+        {
+          "alignment": "center",
+          "wrap": false
+        },
+        {
+          "alignment": "center",
+          "wrap": true
+        },
+        {
+          "alignment": "left",
+          "wrap": false
+        },
+        {
+          "alignment": "left",
+          "wrap": false
+        },
+        {
+          "alignment": "left",
+          "wrap": false
+        }
+      ]
+    },
+    "note": {
+      "name": "MLB - Upcoming Game - Demo - Note",
+      "template": [
+        "{{mlb.stadium}}",
+        "{{mlb.away_team_club_name}} @\u00a0{{mlb.home_team_club_name}}\u00a0IN {{= FLOOR(mlb.minutes_until_game/60) }}H {{= MOD(mlb.minutes_until_game,60) }}M",
+        ""
+      ],
+      "line_metadata": [
+        {
+          "alignment": "center",
+          "wrap": false
+        },
+        {
+          "alignment": "center",
+          "wrap": true
+        },
+        {
+          "alignment": "left",
+          "wrap": false
+        }
+      ]
     }
   }
 }

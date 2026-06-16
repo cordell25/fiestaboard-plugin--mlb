@@ -1,7 +1,7 @@
 {
   "id": "mlb",
   "name": "MLB",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Track MLB Game Scores",
   "author": "Andrew Cordell",
   "icon": "trophy",
@@ -137,63 +137,63 @@
         "description": "Scheduled Start Time of Game in Timezone configured",
         "type": "string",
         "max_length": 20,
-        "group": "game",
+        "group": "Game",
         "example": "2026-06-04T15:10:00Z"
       },
       "minutes_until_game": {
         "description": "Minutes until scheduled game start",
         "type": "integer",
         "max_length": 4,
-        "group": "game",
+        "group": "Game",
         "example": "67"
       },
       "game_status_code": {
         "description": "F=Final, P=PreGame",
         "type": "string",
         "max_length": 1,
-        "group": "game",
+        "group": "Game",
         "example": "F"
       },
       "home_team_name": {
         "description": "Home Team",
         "type": "string",
         "max_length": 20,
-        "group": "game",
+        "group": "Game",
         "example": "Seattle Mariners"
       },
       "home_team_abbr": {
         "description": "Home Team Abbreviation",
         "type": "string",
         "max_length": 3,
-        "group": "game",
+        "group": "Game",
         "example": "SEA"
       },
       "home_team_club_name": {
         "description": "Home Team Club Name",
         "type": "string",
         "max_length": 20,
-        "group": "game",
+        "group": "Game",
         "example": "Mariners"
       },
       "home_team_color": {
         "description": "Home Team Primary Color",
         "type": "string",
         "max_length": 6,
-        "group": "game",
+        "group": "Game",
         "example": "red"
       },
       "away_team_name": {
         "description": "Away Team",
         "type": "string",
         "max_length": 20,
-        "group": "game",
+        "group": "Game",
         "example": "Seattle Mariners"
       },
       "away_team_abbr": {
         "description": "Away Team Abbreviation",
         "type": "string",
         "max_length": 3,
-        "group": "game",
+        "group": "Game",
         "example": "SEA"
       },
       "away_team_club_name": {
@@ -207,70 +207,70 @@
         "description": "Away Team Primary Color",
         "type": "string",
         "max_length": 6,
-        "group": "game",
+        "group": "Game",
         "example": "yellow"
       },
       "stadium": {
         "description": "Stadium",
         "type": "string",
         "max_length": 15,
-        "group": "game",
+        "group": "Game",
         "example": "Wrigley Field"
       },
       "current_inning": {
         "description": "Current Inning of Live Game",
         "type": "integer",
         "max_length": 2,
-        "group": "game",
+        "group": "Game",
         "example": "3"
       },
       "current_inning_state": {
         "description": "Top or Bottom",
         "type": "string",
         "max_length": 6,
-        "group": "game",
+        "group": "Game",
         "example": "BOTTOM"
       },
       "current_home_score": {
         "description": "Current score for the Home Team",
         "type": "integer",
         "max_length": 2,
-        "group": "game",
+        "group": "Score",
         "example": "3"
       },
       "current_home_hits": {
         "description": "Current hits for the Home Team",
         "type": "integer",
         "max_length": 2,
-        "group": "game",
+        "group": "Score",
         "example": "8"
       },
       "current_home_errors": {
         "description": "Current errors for the Home Team",
         "type": "integer",
         "max_length": 2,
-        "group": "game",
+        "group": "Score",
         "example": "1"
       },
       "current_away_score": {
         "description": "Current score for the Away Team",
         "type": "integer",
         "max_length": 2,
-        "group": "game",
+        "group": "Score",
         "example": "4"
       },
       "current_away_hits": {
         "description": "Current hits for the Away Team",
         "type": "integer",
         "max_length": 2,
-        "group": "game",
+        "group": "Score",
         "example": "8"
       },
       "current_away_errors": {
         "description": "Current errors for the Away Team",
         "type": "integer",
         "max_length": 2,
-        "group": "game",
+        "group": "Score",
         "example": "1"
       }
     }

@@ -14,6 +14,8 @@ Page Configuration (Plain):
 
 Scoreboard
 
+<img width="550" height="222" alt="Upcoming Game" src="./docs/scoreboard.png" />
+
 Page Configuration (Plain):
 ```
 {{= PAD(SWITCH(mlb.game_status_code,"P","UPCOMING","F","FINAL","I",CONCAT(" ",mlb.current_inning,SWITCH(mlb.current_inning,1,"ST",2,"ND",3,"RD","TH")),"UNKNOWN"),8) }}R  H  E 
@@ -22,6 +24,8 @@ Page Configuration (Plain):
 ```
 
 Current Inning Display
+
+<img width="550" height="222" alt="Upcoming Game" src="./docs/current_score.png" />
 
 Page Configuration (Plain):
 ```

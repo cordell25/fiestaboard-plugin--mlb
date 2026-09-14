@@ -12,9 +12,11 @@ Current Inning Display
 
 ## Example Collection Logic
 Upcoming Game Logic
+
 <img width="550" height="222" alt="Upcoming Game Collection Logic" src="./docs/Collection Logic - Upcoming Game.png" />
 
-During Game Loci
+During Game Locic
+
 <img width="550" height="222" alt="During Game Collection Logic" src="./docs/Collection Logic - During Game.png" />
 
 ## Overview

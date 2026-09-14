@@ -10,6 +10,13 @@ Scoreboard
 
 Current Inning Display
 
+## Example Collection Logic
+Upcoming Game Logic
+<img width="550" height="222" alt="Upcoming Game Collection Logic" src="./docs/Collection Logic - Upcoming Game.png" />
+
+During Game Loci
+<img width="550" height="222" alt="During Game Collection Logic" src="./docs/Collection Logic - During Game.png" />
+
 ## Overview
 The MLB Scores plugin automatically polls the official MLB backend to pull real-time game schedule and linescore data (runs, hits, errors, current inning, and status) for your selected team.
 To optimize network usage, the plugin caches league-wide team profiles on configuration. It throttles the schedule API to check at most once every 10 minutes, lifting the restriction to real-time updates only when a game is within 15 minutes of first pitch or actively in progress (based on the configured Refresh Interval, min 60 seconds). The live linescore endpoint is skipped entirely once a game goes final.
@@ -19,9 +26,8 @@ To optimize network usage, the plugin caches league-wide team profiles on config
 | Setting | Name | Description | Required |
 |---|---|---|---|
 | `enabled` | Enabled | Toggle whether to activate game tracking. | No |
-| `teams` | Teams to track | Selected MLB team(s) to monitor game data and match progress for. | Yes |
+| `teams` | Team to track | Selected MLB team to monitor game data and game progress. | Yes |
 | `timezone` | Timezone | IANA timezone database string used for interpreting start times and localization. | No |
-| `trigger_page_id` | Trigger Page | Custom template page using layout variables to display when a game trigger fires. | No |
 | `refresh_seconds` | Refresh Interval (seconds) | Frequency of fetching live game updates (minimum 60 seconds). | No |
 
 ## Template Variables
@@ -33,8 +39,6 @@ To optimize network usage, the plugin caches league-wide team profiles on config
 | `mlb.minutes_until_game` | Integer minutes remaining until the scheduled first pitch | `45` |
 | `mlb.game_status_code` | Raw official status code tracking play state (`F` = Final, `P` = Pre-Game, `I` = In-Progress, `0` = No Game) | `I` |
 | `mlb.stadium` | Venue name where the scheduled game is taking place | `Wrigley Field` |
-| `mlb.current_inning` | The current frame integer value of an active live match | `4` |
-| `mlb.current_inning_state` | Current half-inning positioning description | `BOTTOM` |
 
 ### Team Details & Custom Colors
 | Variable | Description | Example |
@@ -51,6 +55,8 @@ To optimize network usage, the plugin caches league-wide team profiles on config
 ### Boxscore Statistics
 | Variable | Description | Example |
 |---|---|---|
+| `mlb.current_inning` | The current frame integer value of an active live match | `4` |
+| `mlb.current_inning_state` | Current half-inning positioning description | `BOTTOM` |
 | `mlb.current_home_score` | Total runs accumulated by the home team | `5` |
 | `mlb.current_home_hits` | Total hits recorded by the home team | `9` |
 | `mlb.current_home_errors` | Total errors committed by the home team | `1` |

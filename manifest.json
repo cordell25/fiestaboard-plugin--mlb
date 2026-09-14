@@ -252,25 +252,17 @@
     "flagship": {
       "name": "MLB - Upcoming Game - Demo - Flagship",
       "template": [
-        "{{mlb.stadium}}",
         "",
-        "{{mlb.away_team_club_name}} @\u00a0{{mlb.home_team_club_name}}\u00a0IN {{= FLOOR(mlb.minutes_until_game/60) }}H {{= MOD(mlb.minutes_until_game,60) }}M",
-        "",
+        "{{= PAD(SWITCH(mlb.game_status_code,\"P\",\"UPCOMING\",\"F\",\"FINAL\",\"I\",CONCAT(\" \",mlb.current_inning,SWITCH(mlb.current_inning,1,\"ST\",2,\"ND\",3,\"RD\",\"TH\")),\"UNKNOWN\"),8) }}R  H  E ",
+        "{{= IF(OR(mlb.game_status_code!=\"I\",AND(mlb.game_status_code==\"I\",mlb.current_inning_state==\"Top\")),COLOR(mlb.away_team_color),\" \") }}{{= PAD(mlb.away_team_abbr,6) }}{{= PADLEFT(mlb.current_away_score,2) }}{{= PADLEFT(mlb.current_away_hits,3) }}{{= PADLEFT(mlb.current_away_errors,3) }}",
+        "{{= IF(OR(mlb.game_status_code!=\"I\",AND(mlb.game_status_code=\"I\",mlb.current_inning_state=\"Bottom\")),COLOR(mlb.home_team_color),\" \") }}{{= PAD(mlb.home_team_abbr,6) }}{{= PADLEFT(mlb.current_home_score,2) }}{{= PADLEFT(mlb.current_home_hits,3) }}{{= PADLEFT(mlb.current_home_errors,3) }}",
         "",
         ""
       ],
       "line_metadata": [
         {
-          "alignment": "center",
+          "alignment": "left",
           "wrap": false
-        },
-        {
-          "alignment": "center",
-          "wrap": false
-        },
-        {
-          "alignment": "center",
-          "wrap": true
         },
         {
           "alignment": "left",
@@ -283,24 +275,10 @@
         {
           "alignment": "left",
           "wrap": false
-        }
-      ]
-    },
-    "note": {
-      "name": "MLB - Upcoming Game - Demo - Note",
-      "template": [
-        "{{mlb.stadium}}",
-        "{{mlb.away_team_club_name}} @\u00a0{{mlb.home_team_club_name}}\u00a0IN {{= FLOOR(mlb.minutes_until_game/60) }}H {{= MOD(mlb.minutes_until_game,60) }}M",
-        ""
-      ],
-      "line_metadata": [
-        {
-          "alignment": "center",
-          "wrap": false
         },
         {
-          "alignment": "center",
-          "wrap": true
+          "alignment": "left",
+          "wrap": false
         },
         {
           "alignment": "left",
@@ -310,32 +288,10 @@
     },
     "note": {
       "name": "MLB - Scoreboard - Demo - Note",
-      "template": [
-        "{{= PAD(SWITCH(mlb.game_status_code,"P","UPCOMING","F","FINAL","I",CONCAT(" ",mlb.current_inning,SWITCH(mlb.current_inning,1,"ST",2,"ND",3,"RD","TH")),"UNKNOWN"),8) }}R  H  E ",
-        "{{= IF(OR(mlb.game_status_code!="I",AND(mlb.game_status_code=="I",mlb.current_inning_state=="Top")),COLOR(mlb.away_team_color)," ") }}{{= PAD(mlb.away_team_abbr,6) }}{{= PADLEFT(mlb.current_away_score,2) }}{{= PADLEFT(mlb.current_away_hits,3) }}{{= PADLEFT(mlb.current_away_errors,3) }}",
-        "{{= IF(OR(mlb.game_status_code!="I",AND(mlb.game_status_code="I",mlb.current_inning_state="Bottom")),COLOR(mlb.home_team_color)," ") }}{{= PAD(mlb.home_team_abbr,6) }}{{= PADLEFT(mlb.current_home_score,2) }}{{= PADLEFT(mlb.current_home_hits,3) }}{{= PADLEFT(mlb.current_home_errors,3) }}"
-      ],
-      "line_metadata": [
-        {
-          "alignment": "left",
-          "wrap": false
-        },
-        {
-          "alignment": "left",
-          "wrap": false
-        },
-        {
-          "alignment": "left",
-          "wrap": false
-        }
-      ]
-    },
-    "note": {
-      "name": "MLB - Current Score - Demo - Note",
-      "template": [
-        "{{mlb.current_inning_state}} {{mlb.current_inning}}{{= SWITCH(mlb.current_inning,1,"ST",2,"ND",3,"RD","TH") }}",
-        "{{= COLOR(mlb.away_team_color) }}{{mlb.away_team_club_name}}{{= PADLEFT(mlb.current_away_score,ABS(SUM(-14,LEN(mlb.away_team_club_name)))) }}",
-        "{{= COLOR(mlb.home_team_color) }}{{mlb.home_team_club_name}}{{= PADLEFT(mlb.current_home_score,ABS(SUM(-14,LEN(mlb.home_team_club_name)))) }}"
+        "template": [ 
+          "{{= PAD(SWITCH(mlb.game_status_code,\"P\",\"UPCOMING\",\"F\",\"FINAL\",\"I\",CONCAT(\" \",mlb.current_inning,SWITCH(mlb.current_inning,1,\"ST\",2,\"ND\",3,\"RD\",\"TH\")),\"UNKNOWN\"),8) }}R  H  E ",
+          "{{= IF(OR(mlb.game_status_code!=\"I\",AND(mlb.game_status_code==\"I\",mlb.current_inning_state==\"Top\")),COLOR(mlb.away_team_color),\" \") }}{{= PAD(mlb.away_team_abbr,6) }}{{= PADLEFT(mlb.current_away_score,2) }}{{= PADLEFT(mlb.current_away_hits,3) }}{{= PADLEFT(mlb.current_away_errors,3) }}",
+          "{{= IF(OR(mlb.game_status_code!=\"I\",AND(mlb.game_status_code=\"I\",mlb.current_inning_state=\"Bottom\")),COLOR(mlb.home_team_color),\" \") }}{{= PAD(mlb.home_team_abbr,6) }}{{= PADLEFT(mlb.current_home_score,2) }}{{= PADLEFT(mlb.current_home_hits,3) }}{{= PADLEFT(mlb.current_home_errors,3) }}"
       ],
       "line_metadata": [
         {

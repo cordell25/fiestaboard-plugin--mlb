@@ -6,9 +6,29 @@ Upcoming Game
 
 <img width="550" height="222" alt="Upcoming Game" src="./docs/upcoming_game.png" />
 
+Page Configuration (Plain):
+```
+{{mlb.stadium}}
+{{mlb.away_team_club_name}} @ {{mlb.home_team_club_name}} IN {{= FLOOR(mlb.minutes_until_game/60) }}H {{= MOD(mlb.minutes_until_game,60) }}M
+```
+
 Scoreboard
 
+Page Configuration (Plain):
+```
+{{= PAD(SWITCH(mlb.game_status_code,"P","UPCOMING","F","FINAL","I",CONCAT(" ",mlb.current_inning,SWITCH(mlb.current_inning,1,"ST",2,"ND",3,"RD","TH")),"UNKNOWN"),8) }}R  H  E 
+{{= IF(OR(mlb.game_status_code!="I",AND(mlb.game_status_code=="I",mlb.current_inning_state=="Top")),COLOR(mlb.away_team_color)," ") }}{{= PAD(mlb.away_team_abbr,6) }}{{= PADLEFT(mlb.current_away_score,2) }}{{= PADLEFT(mlb.current_away_hits,3) }}{{= PADLEFT(mlb.current_away_errors,3) }}
+{{= IF(OR(mlb.game_status_code!="I",AND(mlb.game_status_code="I",mlb.current_inning_state="Bottom")),COLOR(mlb.home_team_color)," ") }}{{= PAD(mlb.home_team_abbr,6) }}{{= PADLEFT(mlb.current_home_score,2) }}{{= PADLEFT(mlb.current_home_hits,3) }}{{= PADLEFT(mlb.current_home_errors,3) }}
+```
+
 Current Inning Display
+
+Page Configuration (Plain):
+```
+{{mlb.current_inning_state}} {{mlb.current_inning}}{{= SWITCH(mlb.current_inning,1,"ST",2,"ND",3,"RD","TH") }}
+{{= COLOR(mlb.away_team_color) }}{{mlb.away_team_club_name}}{{= PADLEFT(mlb.current_away_score,ABS(SUM(-14,LEN(mlb.away_team_club_name)))) }}
+{{= COLOR(mlb.home_team_color) }}{{mlb.home_team_club_name}}{{= PADLEFT(mlb.current_home_score,ABS(SUM(-14,LEN(mlb.home_team_club_name)))) }}
+```
 
 ## Example Collection Logic
 Upcoming Game Logic

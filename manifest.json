@@ -19,8 +19,8 @@
       },
       "teams": {
         "type": "array",
-        "title": "Teams to track",
-        "description": "Select sports to display sports scores for",
+        "title": "Team to track",
+        "description": "Select MLB team to display games score",
         "minItems": 1,
         "maxItems": 1,
         "items": {

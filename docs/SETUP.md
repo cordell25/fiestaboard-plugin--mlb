@@ -7,7 +7,7 @@ Scoreboard
 Current Inning Display
 
 ## Overview
-The MLB Scores plugin automatically polls the official MLB backend to pull real-time linescore data (runs, hits, errors, current inning, and status) for your selected team. To optimize network usage, the plugin aggressively caches league-wide team profiles on startup and only calls the active live game endpoint starting 15 minutes prior to first pitch until the game goes final.
+The MLB Scores plugin automatically polls the official MLB backend to pull real-time linescore data (runs, hits, errors, current inning, and status) for your selected team. To optimize network usage, the plugin caches league-wide team profiles on startup and only calls the active live game endpoint starting 15 minutes prior to first pitch until the game goes final.
 
 ## Configuration
 

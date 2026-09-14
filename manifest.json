@@ -70,8 +70,8 @@
       "refresh_seconds": {
         "type": "integer",
         "title": "Refresh Interval (seconds)",
-        "description": "How often to refresh game data.",
-        "default": 60,
+        "description": "How often to refresh game data during a game. Starts 15 minutes prior to first pitch and continues until game concludes",
+        "default": 180,
         "minimum": 60
       }
     },

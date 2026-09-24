@@ -30,7 +30,7 @@ class mlb(PluginBase):
     
     @property
     def plugin_id(self) -> str:
-        return "mlb_beta"
+        return "mlbeta"
 
     # ------------------------------------------------------------------
     # Config validation

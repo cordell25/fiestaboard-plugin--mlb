@@ -16,7 +16,7 @@ API_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId="
 API_GAME_URL = "https://statsapi.mlb.com/api/v1/game/"
 API_GAME_URL_APPEND = "/linescore"
 
-class mlbeta(PluginBase):
+class mlb(PluginBase):
     def __init__(self, manifest: Dict[str, Any]):
         """Initialize the sports scores plugin."""
         super().__init__(manifest)
@@ -29,7 +29,7 @@ class mlbeta(PluginBase):
     
     @property
     def plugin_id(self) -> str:
-        return "mlbeta"
+        return "mlb"
 
     # ------------------------------------------------------------------
     # Config validation

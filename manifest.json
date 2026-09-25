@@ -1,7 +1,7 @@
 {
   "id": "mlb",
   "name": "Major League Baseball (MLB) - BETA",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "description": "Track MLB Game Scores",
   "author": "Andrew Cordell",
   "icon": "trophy",
@@ -108,6 +108,9 @@
         ]
       }
     }
+  },
+  "descriptions": {
+    "games.*.game_scheduled_start": "DOES THIS WORK"
   },
   "max_lengths": {
     "games.*.game_scheduled_start": 20,

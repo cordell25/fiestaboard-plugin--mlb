@@ -84,52 +84,130 @@
     "arrays": {
       "games": {
         "label_field": "formatted",
-        "item_fields": [
-          "game_scheduled_start",
-          "minutes_until_game",
-          "game_status_code",
-          "stadium",
-          "current_inning",
-          "current_inning_state",
-          "home_team_name",
-          "home_team_abbr",
-          "home_team_club_name",
-          "home_team_color",
-          "away_team_name",
-          "away_team_abbr",
-          "away_team_club_name",
-          "away_team_color",
-          "current_home_score",
-          "current_home_hits",
-          "current_home_errors",
-          "current_away_score",
-          "current_away_hits",
-          "current_away_errors"
-        ]
+        "item_fields": {
+          "game_scheduled_start": {
+            "description": "Scheduled start time (e.g., 7:05 PM)",
+            "type": "string",
+            "max_length": 20,
+            "group": "game"
+          },
+          "minutes_until_game": {
+            "description": "Minutes remaining until scheduled first pitch",
+            "type": "number",
+            "max_length": 4,
+            "group": "game"
+          },
+          "game_status_code": {
+            "description": "Single-letter status code (P: Preview/Upcoming, I: In-Progress, F: Final)",
+            "type": "string",
+            "max_length": 1,
+            "group": "game"
+          },
+          "stadium": {
+            "description": "Venue / ballpark name",
+            "type": "string",
+            "max_length": 15,
+            "group": "game"
+          },
+          "current_inning": {
+            "description": "Current inning number",
+            "type": "number",
+            "max_length": 2,
+            "group": "game"
+          },
+          "current_inning_state": {
+            "description": "Inning half / state (Top, Middle, Bottom, End)",
+            "type": "string",
+            "max_length": 6,
+            "group": "game"
+          },
+          "home_team_name": {
+            "description": "Full home team name (e.g., Colorado Rockies)",
+            "type": "string",
+            "max_length": 20,
+            "group": "teams"
+          },
+          "home_team_abbr": {
+            "description": "Home team three-letter abbreviation (e.g., COL)",
+            "type": "string",
+            "max_length": 3,
+            "group": "teams"
+          },
+          "home_team_club_name": {
+            "description": "Home team mascot/club name (e.g., Rockies)",
+            "type": "string",
+            "max_length": 20,
+            "group": "teams"
+          },
+          "home_team_color": {
+            "description": "Home team primary hex color code without #",
+            "type": "string",
+            "max_length": 6,
+            "group": "teams"
+          },
+          "away_team_name": {
+            "description": "Full away team name (e.g., Chicago Cubs)",
+            "type": "string",
+            "max_length": 20,
+            "group": "teams"
+          },
+          "away_team_abbr": {
+            "description": "Away team three-letter abbreviation (e.g., CHC)",
+            "type": "string",
+            "max_length": 3,
+            "group": "teams"
+          },
+          "away_team_club_name": {
+            "description": "Away team mascot/club name (e.g., Cubs)",
+            "type": "string",
+            "max_length": 20,
+            "group": "teams"
+          },
+          "away_team_color": {
+            "description": "Away team primary hex color code without #",
+            "type": "string",
+            "max_length": 6,
+            "group": "teams"
+          },
+          "current_home_score": {
+            "description": "Current runs scored by the home team",
+            "type": "number",
+            "max_length": 2,
+            "group": "stats"
+          },
+          "current_home_hits": {
+            "description": "Current hits recorded by the home team",
+            "type": "number",
+            "max_length": 2,
+            "group": "stats"
+          },
+          "current_home_errors": {
+            "description": "Current errors committed by the home team",
+            "type": "number",
+            "max_length": 2,
+            "group": "stats"
+          },
+          "current_away_score": {
+            "description": "Current runs scored by the away team",
+            "type": "number",
+            "max_length": 2,
+            "group": "stats"
+          },
+          "current_away_hits": {
+            "description": "Current hits recorded by the away team",
+            "type": "number",
+            "max_length": 2,
+            "group": "stats"
+          },
+          "current_away_errors": {
+            "description": "Current errors committed by the away team",
+            "type": "number",
+            "max_length": 2,
+            "group": "stats"
+          }
+        }
       }
     }
-  },
-  "max_lengths": {
-    "games.*.game_scheduled_start": 20,
-    "games.*.minutes_until_game": 4,
-    "games.*.game_status_code": 1,
-    "games.*.stadium": 15,
-    "games.*.current_inning": 2,
-    "games.*.current_inning_state": 6,
-    "games.*.home_team_name": 20,
-    "games.*.home_team_abbr": 3,
-    "games.*.home_team_club_name": 20,
-    "games.*.home_team_color": 6,
-    "games.*.away_team_name": 20,
-    "games.*.away_team_abbr": 3,
-    "games.*.away_team_club_name": 20,
-    "games.*.away_team_color": 6,
-    "games.*.current_home_score": 2,
-    "games.*.current_home_hits": 2,
-    "games.*.current_home_errors": 2,
-    "games.*.current_away_score": 2,
-    "games.*.current_away_hits": 2,
-    "games.*.current_away_errors": 2
   },
   "teaser": "{67}CUBS  6",
   "previews": [

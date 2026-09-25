@@ -1,7 +1,7 @@
 {
-  "id": "mlbeta",
+  "id": "mlb",
   "name": "Major League Baseball (MLB) - BETA",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "Track MLB Game Scores",
   "author": "Andrew Cordell",
   "icon": "trophy",

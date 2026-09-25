@@ -1,7 +1,7 @@
 {
   "id": "mlb",
   "name": "Major League Baseball (MLB) - BETA",
-  "version": "1.6.5",
+  "version": "1.7.0",
   "description": "Track MLB Game Scores",
   "author": "Andrew Cordell",
   "icon": "trophy",
@@ -85,6 +85,17 @@
       "games": {
         "label_field": "formatted",
         "item_fields": {
+          "team_tracked": {
+            "description": "Name of the configured team monitored in this slot",
+            "type": "string",
+            "max_length": 20,
+            "group": "teams"
+          },
+          "game_today": {
+            "description": "True if the team has a game today; false on off days",
+            "type": "boolean",
+            "group": "game"
+          },
           "game_scheduled_start": {
             "description": "Scheduled start time (e.g., 7:05 PM)",
             "type": "string",
@@ -98,9 +109,9 @@
             "group": "game"
           },
           "game_status_code": {
-            "description": "Single-letter status code (P: Preview/Upcoming, I: In-Progress, F: Final)",
+            "description": "Single-letter status code (P: Preview, I: In-Progress, F: Final, OFF: Off Day)",
             "type": "string",
-            "max_length": 1,
+            "max_length": 3,
             "group": "game"
           },
           "stadium": {

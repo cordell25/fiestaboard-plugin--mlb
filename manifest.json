@@ -109,9 +109,6 @@
       }
     }
   },
-  "descriptions": {
-    "games.*.game_scheduled_start": "DOES THIS WORK"
-  },
   "max_lengths": {
     "games.*.game_scheduled_start": 20,
     "games.*.minutes_until_game": 4,

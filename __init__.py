@@ -125,8 +125,9 @@ class mlb(PluginBase):
             time_since_last_fetch = now - self._last_schedule_fetch
             minutes_since_fetch = time_since_last_fetch.total_seconds() / 60
 
+            # Flatten all games across all returned dates to avoid timezone/partition drops
             cached_dates = self._cached_schedule_payload.get("dates", [])
-            cached_games = cached_dates[0].get("games", []) if cached_dates else []
+            cached_games = [g for d in cached_dates for g in d.get("games", [])]
 
             if not cached_games:
                 if minutes_since_fetch < 10:
@@ -236,7 +237,7 @@ class mlb(PluginBase):
                 g2_status = g2.get("status", {}).get("statusCode", "")
 
                 g1_complete = g1_status in ("F", "O", "FR")
-                # Game 2 has started if it's not preview/scheduled
+                # Game 2 has started if it is not preview/scheduled
                 g2_started = g2_status not in ("P", "S", "PR")
 
                 # Only swap to game 2 if game 1 is complete AND game 2 has actually started

@@ -1,7 +1,7 @@
-#MLB - Track Team Games / Scores
+# MLB - Track Team Games / Scores
 
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import pytz
 import logging
 import requests
@@ -13,8 +13,10 @@ logger = logging.getLogger(__name__)
 # MLB API base URLs (Targeting AL and NL explicitly)
 API_TEAMS_LIST_URL = "https://statsapi.mlb.com/api/v1/teams?leagueIds=103,104"
 API_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId="
+API_PLAYOFFS_SCHEDULE_URL = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gameTypes=P,F,D,L,W"
 API_GAME_URL = "https://statsapi.mlb.com/api/v1/game/"
 API_GAME_URL_APPEND = "/linescore"
+
 
 class mlb(PluginBase):
     def __init__(self, manifest: Dict[str, Any]):
@@ -22,11 +24,15 @@ class mlb(PluginBase):
         super().__init__(manifest)
         # Fast lookup map: { team_id: { "name": "...", "abbreviation": "...", "color": "..." } }
         self._teams: Dict[int, Dict[str, Any]] = {}
-        
+
         # Schedule tracking cache states
         self._last_schedule_fetch: Optional[datetime] = None
         self._cached_schedule_payload: Optional[Dict[str, Any]] = None
-    
+
+        # Playoff schedule cache states
+        self._last_playoff_fetch: Optional[datetime] = None
+        self._cached_playoff_payload: Optional[Dict[str, Any]] = None
+
     @property
     def plugin_id(self) -> str:
         return "mlb"
@@ -34,18 +40,20 @@ class mlb(PluginBase):
     # ------------------------------------------------------------------
     # Config validation
     # ------------------------------------------------------------------
-    
+
     def validate_config(self, config: Dict[str, Any]) -> List[str]:
         """Validate MLB configuration."""
         errors = []
         teams = config.get("teams", [])
-        if not teams:
-            errors.append("At least one team must be selected")    
+        track_playoffs = config.get("track_playoffs", False)
+
+        if not teams and not track_playoffs:
+            errors.append("At least one team must be selected, or 'Track All Playoff Games' must be enabled")
         return errors
 
     def on_config_change(self, old_config: dict, new_config: dict):
         logger.warning("on_config_change called - Caching all MLB teams with colors")
-        
+
         try:
             response = requests.get(
                 API_TEAMS_LIST_URL,
@@ -53,22 +61,20 @@ class mlb(PluginBase):
             )
             response.raise_for_status()
             team_payload = response.json()
-            
-            # Rebuild our global team map using ID as the key
+
             new_teams_map = {}
             for team in team_payload.get("teams", []):
                 t_id = team.get("id")
                 name = team.get("name") or ""
-                
+
                 if t_id:
-                    # Normalize common variations like "Oakland Athletics" vs "Athletics"
                     match_name = name
                     if "Athletics" in name:
                         match_name = "Athletics"
-                        
+
                     blueprint = self.get_configured_team_id_and_color(match_name) or {}
                     team_color = blueprint.get("color", "white")
-                    
+
                     new_teams_map[t_id] = {
                         "name": name,
                         "short_name": team.get("shortName"),
@@ -76,221 +82,422 @@ class mlb(PluginBase):
                         "club_name": team.get("clubName"),
                         "abbreviation": team.get("abbreviation"),
                         "location": team.get("locationName"),
-                        "color": team_color
+                        "color": team_color,
                     }
-            
+
             self._teams = new_teams_map
             logger.info("Successfully cached %d MLB teams by ID with colors.", len(self._teams))
-            
-            # Clear schedule cache on config change to ensure instant refresh if team changed
+
+            # Invalidate caches on settings change
             self._last_schedule_fetch = None
             self._cached_schedule_payload = None
-            
+            self._last_playoff_fetch = None
+            self._cached_playoff_payload = None
+
         except Exception as e:
             logger.error("Failed to populate league team map: %s", e)
-
 
     # ------------------------------------------------------------------
     # Data fetching
     # ------------------------------------------------------------------
-    
+
     def fetch_data(self) -> PluginResult:
-        """Fetch team scores for all configured teams."""
-
-        # Default values if no game is scheduled today or API drops offline
-        fallback_data = {
-            "home_team_name": "",
-            "home_team_abbr": "",
-            "home_team_club_name": "",
-            "home_team_color": "black",
-            
-            "away_team_name": "",
-            "away_team_abbr": "",
-            "away_team_club_name": "",
-            "away_team_color": "black",
-
-            "game_scheduled_start": "",
-            "minutes_until_game": 0,
-            "game_status_code": "0",
-            "stadium": "",
-            "current_inning": 0,
-            "current_inning_state": "",
-            
-            "current_home_score": 0,
-            "current_home_hits": 0,
-            "current_home_errors": 0,
-            
-            "current_away_score": 0,
-            "current_away_hits": 0,
-            "current_away_errors": 0
-        }
-
+        """Fetch team scores for configured teams and active playoff games."""
         user_timezone = self.config.get("timezone", "America/Los_Angeles")
         tz = pytz.timezone(user_timezone)
         now = datetime.now(tz)
-        
+
         teams = self.config.get("teams", [])
-        if not teams:
-            return PluginResult(available=False, error="No teams selected")
-        
-        # Self-healing if cache didn't populate on startup
+        track_playoffs = self.config.get("track_playoffs", False)
+
+        if not teams and not track_playoffs:
+            return PluginResult(available=False, error="No teams selected and playoffs tracking disabled")
+
         if not self._teams:
             logger.warning("League map empty. Fetching now.")
             self.on_config_change({}, self.config)
 
-        # Get the ID and color blueprint of our configured team
-        team_meta = self.get_configured_team_id_and_color(teams[0])
-        if not team_meta:
-            return PluginResult(available=False, error=f"Invalid configured team: {teams[0]}")
-        configured_team_id = team_meta["id"]
+        configured_team_ids = []
+        for team_name in teams:
+            team_meta = self.get_configured_team_id_and_color(team_name)
+            if team_meta and team_meta.get("id"):
+                configured_team_ids.append(team_meta["id"])
+
+        team_ids_param = ",".join(str(tid) for tid in configured_team_ids) if configured_team_ids else ""
 
         # --------------------------------------------------------------
-        # SMART CACHING GATE FOR SCHEDULE API
+        # 1. FETCH CONFIGURED TEAMS SCHEDULE
         # --------------------------------------------------------------
-        skip_schedule_api_call = False
-        
-        if self._cached_schedule_payload and self._last_schedule_fetch:
-            # Let's see how many minutes have passed since we last asked the schedule API
-            time_since_last_fetch = now - self._last_schedule_fetch
-            minutes_since_fetch = time_since_last_fetch.total_seconds() / 60
-            
-            if self._cached_schedule_payload.get("dates") and self._cached_schedule_payload["dates"][0].get("games"):
-                temp_game = self._cached_schedule_payload["dates"][0]["games"][0]
-                temp_utc_start = datetime.strptime(temp_game["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-                temp_local_start = temp_utc_start.astimezone(tz)
-                temp_minutes_until = int((temp_local_start - now).total_seconds() / 60)
-                
-                # If the game is more than 15 mins away AND we fetched less than 10 mins ago, reuse cache
-                if temp_minutes_until > 15 and minutes_since_fetch < 10:
-                    skip_schedule_api_call = True
-            else:
-                # No games scheduled today, only recheck the schedule endpoint every 10 minutes
-                if minutes_since_fetch < 10:
-                    skip_schedule_api_call = True
+        raw_games = []
+        if team_ids_param:
+            skip_schedule_api_call = False
 
-        # GET or Reuse Schedule Information
-        if skip_schedule_api_call:
-            logger.info("Reusing cached schedule payload to preserve API overhead.")
-            schedule_payload = self._cached_schedule_payload
-        else:
-            logger.info("Fetching fresh schedule payload from MLB API.")
-            try:
-                response = requests.get(
-                    f"{API_SCHEDULE_URL}{configured_team_id}",
-                    timeout=15,
-                )
-                response.raise_for_status()
-                schedule_payload = response.json()
-                
-                # Update cache variables on successful hit
-                self._cached_schedule_payload = schedule_payload
-                self._last_schedule_fetch = now
-                
-            except Exception as e:
-                logger.warning("Schedule fetch failed: %s. Trying fallback to cache or blank template.", e)
-                if self._cached_schedule_payload:
-                    schedule_payload = self._cached_schedule_payload
+            if self._cached_schedule_payload and self._last_schedule_fetch:
+                time_since_last_fetch = now - self._last_schedule_fetch
+                minutes_since_fetch = time_since_last_fetch.total_seconds() / 60
+
+                cached_dates = self._cached_schedule_payload.get("dates", [])
+                cached_games = [g for d in cached_dates for g in d.get("games", [])]
+
+                if not cached_games:
+                    if minutes_since_fetch < 10:
+                        skip_schedule_api_call = True
                 else:
-                    return PluginResult(available=True, data=fallback_data)
+                    has_imminent_or_live_game = False
+                    for g in cached_games:
+                        g_status = g.get("status", {}).get("statusCode")
+                        g_utc = datetime.strptime(g["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+                        g_local = g_utc.astimezone(tz)
+                        mins_until = (g_local - now).total_seconds() / 60
 
-        # Confirm if any games actually exist for today
-        if schedule_payload.get("dates") and schedule_payload["dates"][0].get("games"):
-            game_info = schedule_payload["dates"][0]["games"][0]
-            game_pk = game_info["gamePk"]
-        else:
-            return PluginResult(available=True, data=fallback_data)
+                        if mins_until <= 15 and g_status not in ("F", "O", "D"):
+                            has_imminent_or_live_game = True
+                            break
 
-        # --------------------------------------------------------------
-        # LIVE DATA AND TIME PROCESS
-        # --------------------------------------------------------------
-        try:
-            # Time conversion and tracking math
-            utc_start = datetime.strptime(game_info["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-            local_start = utc_start.astimezone(tz)
-            scheduled_game_start = local_start.strftime("%I:%M %p").lstrip("0")
-            
-            time_delta = local_start - now
-            minutes_until_game = int(time_delta.total_seconds() / 60)
-            
-            # Extract live IDs from the schedule
-            away_id = game_info["teams"]["away"]["team"]["id"]
-            home_id = game_info["teams"]["home"]["team"]["id"]
+                    if not has_imminent_or_live_game and minutes_since_fetch < 10:
+                        skip_schedule_api_call = True
 
-            # Pull clean details out of our global self._teams dictionary
-            away_cached = self._teams.get(away_id, {})
-            home_cached = self._teams.get(home_id, {})
-
-            game_status_code = game_info["status"]["statusCode"]
-
-            # Gating Rule: Only call game linescore API if within 15 minutes of start AND not finished
-            should_fetch_live_data = (minutes_until_game <= 15) and (game_status_code != "F")
-
-            # Initialize safe default structures for linescore parameters
-            away_stats = {}
-            home_stats = {}
-            current_inning = None
-            current_inning_state = None
-
-            if game_pk and should_fetch_live_data:
-                logger.info("Game active or pre-game window open. Fetching linescore data for game %s", game_pk)
+            if skip_schedule_api_call:
+                logger.info("Reusing cached team schedule payload.")
+                schedule_payload = self._cached_schedule_payload
+            else:
+                logger.info("Fetching fresh schedule payload for teams: %s", team_ids_param)
                 try:
                     response = requests.get(
-                        f"{API_GAME_URL}{game_pk}{API_GAME_URL_APPEND}",
+                        f"{API_SCHEDULE_URL}{team_ids_param}",
                         timeout=15,
                     )
                     response.raise_for_status()
-                    game_payload = response.json()
-                    
-                    # Safely map objects from active linescore
-                    linescore_teams = game_payload.get("teams", {})
-                    away_stats = linescore_teams.get("away", {})
-                    home_stats = linescore_teams.get("home", {})
-                    current_inning = game_payload.get("currentInning")
-                    current_inning_state = game_payload.get("inningState")
-                    
+                    schedule_payload = response.json()
+
+                    self._cached_schedule_payload = schedule_payload
+                    self._last_schedule_fetch = now
                 except Exception as e:
-                    logger.warning("Game linescore fetch failed: %s. Falling back to schedule metrics.", e)
+                    logger.warning("Schedule fetch failed: %s. Falling back to cache.", e)
+                    schedule_payload = self._cached_schedule_payload or {}
+
+            for date_entry in schedule_payload.get("dates", []):
+                raw_games.extend(date_entry.get("games", []))
+
+        # --------------------------------------------------------------
+        # 2. FETCH PLAYOFF SCHEDULE (IF ENABLED)
+        # --------------------------------------------------------------
+        playoff_raw_games = []
+        if track_playoffs:
+            skip_playoff_api_call = False
+
+            if self._cached_playoff_payload and self._last_playoff_fetch:
+                time_since_playoff_fetch = now - self._last_playoff_fetch
+                mins_since_playoff_fetch = time_since_playoff_fetch.total_seconds() / 60
+
+                cached_p_dates = self._cached_playoff_payload.get("dates", [])
+                cached_p_games = [g for d in cached_p_dates for g in d.get("games", [])]
+
+                if not cached_p_games:
+                    if mins_since_playoff_fetch < 10:
+                        skip_playoff_api_call = True
+                else:
+                    has_imminent_or_live_playoff = False
+                    for g in cached_p_games:
+                        g_status = g.get("status", {}).get("statusCode")
+                        g_utc = datetime.strptime(g["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+                        g_local = g_utc.astimezone(tz)
+                        mins_until = (g_local - now).total_seconds() / 60
+
+                        if mins_until <= 15 and g_status not in ("F", "O", "D"):
+                            has_imminent_or_live_playoff = True
+                            break
+
+                    if not has_imminent_or_live_playoff and mins_since_playoff_fetch < 10:
+                        skip_playoff_api_call = True
+
+            if skip_playoff_api_call:
+                logger.info("Reusing cached playoff schedule payload.")
+                playoff_payload = self._cached_playoff_payload
             else:
-                logger.info("Outside of active live window (Minutes until: %d, Status: %s). Skipping linescore call.", minutes_until_game, game_status_code)
-                # If the game is final ('F'), we parse final scores directly out of the schedule payload instead of linescore
-                if game_status_code == "F":
-                    away_stats = {"runs": game_info["teams"]["away"].get("score", 0)}
-                    home_stats = {"runs": game_info["teams"]["home"].get("score", 0)}
+                logger.info("Fetching fresh playoff schedule payload from MLB API.")
+                try:
+                    p_resp = requests.get(
+                        API_PLAYOFFS_SCHEDULE_URL,
+                        timeout=15,
+                    )
+                    p_resp.raise_for_status()
+                    playoff_payload = p_resp.json()
 
-            # Return dynamic values mapping 1:1 to variables in manifest.json
-            return PluginResult(
-                available=True,
-                data={
-                    "home_team_name": game_info["teams"]["home"]["team"]["name"],
-                    "home_team_abbr": home_cached.get("abbreviation", "HOM"),
-                    "home_team_club_name": home_cached.get("club_name", "Home"),
-                    "home_team_color": home_cached.get("color", "white"),
-                    
-                    "away_team_name": game_info["teams"]["away"]["team"]["name"],
-                    "away_team_abbr": away_cached.get("abbreviation", "AWY"),
-                    "away_team_club_name": away_cached.get("club_name", "Away"),
-                    "away_team_color": away_cached.get("color", "white"),
+                    self._cached_playoff_payload = playoff_payload
+                    self._last_playoff_fetch = now
+                except Exception as e:
+                    logger.warning("Playoff schedule fetch failed: %s. Falling back to cache.", e)
+                    playoff_payload = self._cached_playoff_payload or {}
 
-                    "game_scheduled_start": scheduled_game_start,
-                    "minutes_until_game": max(0, minutes_until_game),
-                    "game_status_code": game_status_code,
-                    "stadium": game_info.get("venue", {}).get("name", "Unknown Field"),
-                    "current_inning": current_inning,
-                    "current_inning_state": current_inning_state,
-                    
-                    # Boxscore statistics safely resolving to 0 when unfetched or pregame
-                    "current_home_score": home_stats.get("runs", 0),
-                    "current_home_hits": home_stats.get("hits", 0),
-                    "current_home_errors": home_stats.get("errors", 0),
-                    
-                    "current_away_score": away_stats.get("runs", 0),
-                    "current_away_hits": away_stats.get("hits", 0),
-                    "current_away_errors": away_stats.get("errors", 0)
-                },
-            )
-        except KeyError as e:
-            logger.error("Failed to parse API structure: %s", e)
-            return PluginResult(available=False, error="Data parsing error.")
+            for date_entry in playoff_payload.get("dates", []):
+                playoff_raw_games.extend(date_entry.get("games", []))
+
+        # --------------------------------------------------------------
+        # 3. BUILD DETERMINISTIC TEAM SLOTS
+        # --------------------------------------------------------------
+        games_list = []
+        linescore_cache = {}
+        seen_game_pks = set()
+
+        for team_name in teams:
+            team_meta = self.get_configured_team_id_and_color(team_name)
+            if not team_meta:
+                continue
+            target_id = team_meta["id"]
+
+            team_games = []
+            for g in raw_games:
+                home_id = g.get("teams", {}).get("home", {}).get("team", {}).get("id")
+                away_id = g.get("teams", {}).get("away", {}).get("team", {}).get("id")
+                if home_id == target_id or away_id == target_id:
+                    team_games.append(g)
+
+            # Case A: Off Day Placeholder
+            if not team_games:
+                abbr = team_meta.get("abbreviation") or team_name[:3].upper()
+                games_list.append(
+                    {
+                        "formatted": f"{abbr} - OFF",
+                        "team_tracked": team_name,
+                        "game_today": False,
+                        "game_scheduled_start": "",
+                        "minutes_until_game": 0,
+                        "game_status_code": "OFF",
+                        "stadium": "",
+                        "current_inning": 0,
+                        "current_inning_state": "",
+                        "home_team_name": "",
+                        "home_team_abbr": "",
+                        "home_team_club_name": "",
+                        "home_team_color": "white",
+                        "away_team_name": "",
+                        "away_team_abbr": "",
+                        "away_team_club_name": "",
+                        "away_team_color": "white",
+                        "current_home_score": 0,
+                        "current_home_hits": 0,
+                        "current_home_errors": 0,
+                        "current_away_score": 0,
+                        "current_away_hits": 0,
+                        "current_away_errors": 0,
+                    }
+                )
+                continue
+
+            # Case B: Doubleheader Resolution
+            team_games.sort(key=lambda x: x.get("gameDate", ""))
+            matching_game = team_games[0]
+
+            if len(team_games) > 1:
+                g1 = team_games[0]
+                g2 = team_games[1]
+                g1_status = g1.get("status", {}).get("statusCode", "")
+                g2_status = g2.get("status", {}).get("statusCode", "")
+
+                g1_complete = g1_status in ("F", "O", "FR")
+                g2_started = g2_status not in ("P", "S", "PR")
+
+                if g1_complete and g2_started:
+                    matching_game = g2
+                else:
+                    matching_game = g1
+
+            pk = matching_game.get("gamePk")
+            if pk:
+                seen_game_pks.add(pk)
+
+            try:
+                game_item = self._build_game_item(
+                    matching_game, team_name, now, tz, linescore_cache
+                )
+                games_list.append(game_item)
+            except KeyError as e:
+                logger.error("Skipping malformed game entry %s: %s", pk, e)
+
+        # --------------------------------------------------------------
+        # 4. APPEND UNMONITORED PLAYOFF GAMES
+        # --------------------------------------------------------------
+        if track_playoffs and playoff_raw_games:
+            playoff_games = [
+                g for g in playoff_raw_games
+                if g.get("gameType") in ("P", "F", "D", "L", "W")
+            ]
+            playoff_games.sort(key=lambda x: x.get("gameDate", ""))
+
+            for pg in playoff_games:
+                pg_pk = pg.get("gamePk")
+                if not pg_pk or pg_pk in seen_game_pks:
+                    continue
+
+                seen_game_pks.add(pg_pk)
+                try:
+                    playoff_item = self._build_game_item(
+                        pg, "Playoffs", now, tz, linescore_cache
+                    )
+                    games_list.append(playoff_item)
+                except KeyError as e:
+                    logger.error("Skipping malformed playoff game %s: %s", pg_pk, e)
+
+        # --------------------------------------------------------------
+        # 5. RESOLVE LEGACY SCALAR VARIABLES (ACTIVE GAME)
+        # --------------------------------------------------------------
+        active_game = None
+
+        # Priority 1: Game currently live / in-progress ("I")
+        for g in games_list:
+            if g.get("game_today") and g.get("game_status_code") == "I":
+                active_game = g
+                break
+
+        # Priority 2: Upcoming game starting soonest (preserves team order on tie)
+        if not active_game:
+            upcoming_games = [
+                g for g in games_list
+                if g.get("game_today") and g.get("game_status_code") in ("P", "S", "PR", "PW")
+            ]
+            if upcoming_games:
+                upcoming_games.sort(key=lambda x: x.get("minutes_until_game", 9999))
+                active_game = upcoming_games[0]
+
+        # Priority 3: Completed game or off-day entry
+        if not active_game:
+            today_games = [g for g in games_list if g.get("game_today")]
+            if today_games:
+                active_game = today_games[0]
+            elif games_list:
+                active_game = games_list[0]
+
+        legacy_data = {
+            "game_scheduled_start": "",
+            "minutes_until_game": 0,
+            "game_status_code": "OFF",
+            "stadium": "",
+            "current_inning": 0,
+            "current_inning_state": "",
+            "home_team_name": "",
+            "home_team_abbr": "",
+            "home_team_club_name": "",
+            "home_team_color": "white",
+            "away_team_name": "",
+            "away_team_abbr": "",
+            "away_team_club_name": "",
+            "away_team_color": "white",
+            "current_home_score": 0,
+            "current_home_hits": 0,
+            "current_home_errors": 0,
+            "current_away_score": 0,
+            "current_away_hits": 0,
+            "current_away_errors": 0,
+        }
+
+        if active_game:
+            for key in legacy_data:
+                if key in active_game:
+                    legacy_data[key] = active_game[key]
+
+        return PluginResult(
+            available=True,
+            data={
+                **legacy_data,
+                "games": games_list,
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Game item formatting helper
+    # ------------------------------------------------------------------
+
+    def _build_game_item(
+        self,
+        game_info: Dict[str, Any],
+        team_tracked: str,
+        now: datetime,
+        tz: Any,
+        linescore_cache: Dict[int, Any],
+    ) -> Dict[str, Any]:
+        """Convert MLB API game payload into the dictionary schema matching manifest.json."""
+        utc_start = datetime.strptime(game_info["gameDate"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        local_start = utc_start.astimezone(tz)
+        scheduled_game_start = local_start.strftime("%I:%M %p").lstrip("0")
+        minutes_until_game = int((local_start - now).total_seconds() / 60)
+
+        away_id = game_info["teams"]["away"]["team"]["id"]
+        home_id = game_info["teams"]["home"]["team"]["id"]
+
+        away_cached = self._teams.get(away_id, {})
+        home_cached = self._teams.get(home_id, {})
+
+        away_abbr = away_cached.get("abbreviation") or game_info["teams"]["away"]["team"].get("abbreviation", "AWY")
+        home_abbr = home_cached.get("abbreviation") or game_info["teams"]["home"]["team"].get("abbreviation", "HOM")
+
+        game_status_code = game_info.get("status", {}).get("statusCode", "0")
+        should_fetch_live_data = (minutes_until_game <= 15) and (game_status_code not in ("F", "O", "D"))
+
+        away_stats = {}
+        home_stats = {}
+        current_inning = None
+        current_inning_state = None
+
+        game_pk = game_info.get("gamePk")
+        if game_pk and should_fetch_live_data:
+            if game_pk in linescore_cache:
+                linescore_payload = linescore_cache[game_pk]
+            else:
+                try:
+                    linescore_resp = requests.get(
+                        f"{API_GAME_URL}{game_pk}{API_GAME_URL_APPEND}",
+                        timeout=10,
+                    )
+                    linescore_resp.raise_for_status()
+                    linescore_payload = linescore_resp.json()
+                    linescore_cache[game_pk] = linescore_payload
+                except Exception as e:
+                    logger.warning("Linescore fetch failed for game %s: %s", game_pk, e)
+                    linescore_payload = None
+
+            if linescore_payload:
+                linescore_teams = linescore_payload.get("teams", {})
+                away_stats = linescore_teams.get("away", {})
+                home_stats = linescore_teams.get("home", {})
+                current_inning = linescore_payload.get("currentInning")
+                current_inning_state = linescore_payload.get("inningState")
+            else:
+                away_stats = {"runs": game_info["teams"]["away"].get("score", 0)}
+                home_stats = {"runs": game_info["teams"]["home"].get("score", 0)}
+        elif game_status_code in ("F", "O", "D"):
+            away_stats = {"runs": game_info["teams"]["away"].get("score", 0)}
+            home_stats = {"runs": game_info["teams"]["home"].get("score", 0)}
+
+        return {
+            "formatted": f"{away_abbr} @ {home_abbr}",
+            "team_tracked": team_tracked,
+            "game_today": True,
+            "game_scheduled_start": scheduled_game_start,
+            "minutes_until_game": max(0, minutes_until_game),
+            "game_status_code": game_status_code,
+            "stadium": game_info.get("venue", {}).get("name", "Unknown Field"),
+            "current_inning": current_inning or 0,
+            "current_inning_state": current_inning_state or "",
+
+            "home_team_name": game_info["teams"]["home"]["team"].get("name", ""),
+            "home_team_abbr": home_abbr,
+            "home_team_club_name": home_cached.get("club_name") or game_info["teams"]["home"]["team"].get("clubName", "Home"),
+            "home_team_color": home_cached.get("color", "white"),
+
+            "away_team_name": game_info["teams"]["away"]["team"].get("name", ""),
+            "away_team_abbr": away_abbr,
+            "away_team_club_name": away_cached.get("club_name") or game_info["teams"]["away"]["team"].get("clubName", "Away"),
+            "away_team_color": away_cached.get("color", "white"),
+
+            "current_home_score": home_stats.get("runs", 0),
+            "current_home_hits": home_stats.get("hits", 0),
+            "current_home_errors": home_stats.get("errors", 0),
+
+            "current_away_score": away_stats.get("runs", 0),
+            "current_away_hits": away_stats.get("hits", 0),
+            "current_away_errors": away_stats.get("errors", 0),
+        }
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -329,9 +536,9 @@ class mlb(PluginBase):
             "Tampa Bay Rays": {"id": 139, "color": "blue"},
             "Texas Rangers": {"id": 140, "color": "blue"},
             "Toronto Blue Jays": {"id": 141, "color": "blue"},
-            "Washington Nationals": {"id": 120, "color": "red"}
+            "Washington Nationals": {"id": 120, "color": "red"},
         }
         return team_map.get(team_name)
-        
+
     def cleanup(self) -> None:
         pass

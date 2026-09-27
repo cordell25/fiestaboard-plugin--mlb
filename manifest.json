@@ -1,7 +1,7 @@
 {
   "id": "mlb",
   "name": "Major League Baseball (MLB) - BETA",
-  "version": "1.7.2",
+  "version": "1.8.0",
   "description": "Track MLB Game Scores",
   "author": "Andrew Cordell",
   "icon": "trophy",
@@ -20,7 +20,7 @@
       "teams": {
         "type": "array",
         "title": "Team to track",
-        "description": "Select MLB team to display games score",
+        "description": "Select MLB team(s) to display games score(s). 'Games' Variable Array will be populated in the order that teams are selected, even if a game is not played by that team today, they will retain their slot and the 'game_status_code' marked 'OFF'",
         "items": {
           "type": "string",
           "enum": [
@@ -58,6 +58,12 @@
         },
         "uniqueItems": true
       },
+      "track_playoffs": {
+        "type": "boolean",
+        "title": "Track All Playoff Games",
+        "description": "Automatically track all MLB postseason/playoff games regardless of selected teams.",
+        "default": false
+      },
       "timezone": {
         "type": "string",
         "title": "Timezone",
@@ -80,6 +86,128 @@
       "game": { "label": "Game" },
       "teams": { "label": "Teams" },
       "stats": { "label": "Stats" }
+    },
+    "simple": {
+      "game_scheduled_start": {
+        "description": "Scheduled start time (e.g., 7:05 PM)",
+        "type": "string",
+        "max_length": 20,
+        "group": "game"
+      },
+      "minutes_until_game": {
+        "description": "Minutes remaining until scheduled first pitch",
+        "type": "number",
+        "max_length": 4,
+        "group": "game"
+      },
+      "game_status_code": {
+        "description": "Status code (S: Scheduled, P: Preview, I: In-Progress, F: Final, OFF: Off Day)",
+        "type": "string",
+        "max_length": 3,
+        "group": "game"
+      },
+      "stadium": {
+        "description": "Venue / ballpark name",
+        "type": "string",
+        "max_length": 15,
+        "group": "game"
+      },
+      "current_inning": {
+        "description": "Current inning number",
+        "type": "number",
+        "max_length": 2,
+        "group": "game"
+      },
+      "current_inning_state": {
+        "description": "Inning half / state (Top, Middle, Bottom, End)",
+        "type": "string",
+        "max_length": 6,
+        "group": "game"
+      },
+      "home_team_name": {
+        "description": "Full home team name (e.g., Colorado Rockies)",
+        "type": "string",
+        "max_length": 20,
+        "group": "teams"
+      },
+      "home_team_abbr": {
+        "description": "Home team three-letter abbreviation (e.g., COL)",
+        "type": "string",
+        "max_length": 3,
+        "group": "teams"
+      },
+      "home_team_club_name": {
+        "description": "Home team mascot/club name (e.g., Rockies)",
+        "type": "string",
+        "max_length": 20,
+        "group": "teams"
+      },
+      "home_team_color": {
+        "description": "Home team primary hex color code without #",
+        "type": "string",
+        "max_length": 6,
+        "group": "teams"
+      },
+      "away_team_name": {
+        "description": "Full away team name (e.g., Chicago Cubs)",
+        "type": "string",
+        "max_length": 20,
+        "group": "teams"
+      },
+      "away_team_abbr": {
+        "description": "Away team three-letter abbreviation (e.g., CHC)",
+        "type": "string",
+        "max_length": 3,
+        "group": "teams"
+      },
+      "away_team_club_name": {
+        "description": "Away team mascot/club name (e.g., Cubs)",
+        "type": "string",
+        "max_length": 20,
+        "group": "teams"
+      },
+      "away_team_color": {
+        "description": "Away team primary hex color code without #",
+        "type": "string",
+        "max_length": 6,
+        "group": "teams"
+      },
+      "current_home_score": {
+        "description": "Current runs scored by the home team",
+        "type": "number",
+        "max_length": 2,
+        "group": "stats"
+      },
+      "current_home_hits": {
+        "description": "Current hits recorded by the home team",
+        "type": "number",
+        "max_length": 2,
+        "group": "stats"
+      },
+      "current_home_errors": {
+        "description": "Current errors committed by the home team",
+        "type": "number",
+        "max_length": 2,
+        "group": "stats"
+      },
+      "current_away_score": {
+        "description": "Current runs scored by the away team",
+        "type": "number",
+        "max_length": 2,
+        "group": "stats"
+      },
+      "current_away_hits": {
+        "description": "Current hits recorded by the away team",
+        "type": "number",
+        "max_length": 2,
+        "group": "stats"
+      },
+      "current_away_errors": {
+        "description": "Current errors committed by the away team",
+        "type": "number",
+        "max_length": 2,
+        "group": "stats"
+      }
     },
     "arrays": {
       "games": {
@@ -248,9 +376,9 @@
       "name": "MLB - Upcoming Game - Demo - Flagship",
       "template": [
         "",
-        "{{= PAD(SWITCH(mlb.games.0.game_status_code,\"P\",\"UPCOMING\",\"F\",\"FINAL\",\"I\",CONCAT(\" \",mlb.games.0.current_inning,SWITCH(mlb.games.0.current_inning,1,\"ST\",2,\"ND\",3,\"RD\",\"TH\")),\"UNKNOWN\"),8) }}R  H  E ",
-        "{{= IF(OR(mlb.games.0.game_status_code!=\"I\",AND(mlb.games.0.game_status_code==\"I\",mlb.games.0.current_inning_state==\"Top\")),COLOR(mlb.games.0.away_team_color),\" \") }}{{= PAD(mlb.games.0.away_team_abbr,6) }}{{= PADLEFT(mlb.games.0.current_away_score,2) }}{{= PADLEFT(mlb.games.0.current_away_hits,3) }}{{= PADLEFT(mlb.games.0.current_away_errors,3) }}",
-        "{{= IF(OR(mlb.games.0.game_status_code!=\"I\",AND(mlb.games.0.game_status_code=\"I\",mlb.games.0.current_inning_state=\"Bottom\")),COLOR(mlb.games.0.home_team_color),\" \") }}{{= PAD(mlb.games.0.home_team_abbr,6) }}{{= PADLEFT(mlb.games.0.current_home_score,2) }}{{= PADLEFT(mlb.games.0.current_home_hits,3) }}{{= PADLEFT(mlb.games.0.current_home_errors,3) }}",
+        "{{= PAD(SWITCH(mlb.game_status_code,\"P\",\"UPCOMING\",\"F\",\"FINAL\",\"I\",CONCAT(\" \",mlb.current_inning,SWITCH(mlb.current_inning,1,\"ST\",2,\"ND\",3,\"RD\",\"TH\")),\"UNKNOWN\"),8) }}R  H  E ",
+        "{{= IF(OR(mlb.game_status_code!=\"I\",AND(mlb.game_status_code==\"I\",mlb.current_inning_state==\"Top\")),COLOR(mlb.away_team_color),\" \") }}{{= PAD(mlb.away_team_abbr,6) }}{{= PADLEFT(mlb.current_away_score,2) }}{{= PADLEFT(mlb.current_away_hits,3) }}{{= PADLEFT(mlb.current_away_errors,3) }}",
+        "{{= IF(OR(mlb.game_status_code!=\"I\",AND(mlb.game_status_code=\"I\",mlb.current_inning_state=\"Bottom\")),COLOR(mlb.home_team_color),\" \") }}{{= PAD(mlb.home_team_abbr,6) }}{{= PADLEFT(mlb.current_home_score,2) }}{{= PADLEFT(mlb.current_home_hits,3) }}{{= PADLEFT(mlb.current_home_errors,3) }}",
         "",
         ""
       ],
@@ -266,9 +394,9 @@
     "note": {
       "name": "MLB - Scoreboard - Demo - Note",
       "template": [
-        "{{= PAD(SWITCH(mlb.games.0.game_status_code,\"P\",\"UPCOMING\",\"F\",\"FINAL\",\"I\",CONCAT(\" \",mlb.games.0.current_inning,SWITCH(mlb.games.0.current_inning,1,\"ST\",2,\"ND\",3,\"RD\",\"TH\")),\"UNKNOWN\"),8) }}R  H  E ",
-        "{{= IF(OR(mlb.games.0.game_status_code!=\"I\",AND(mlb.games.0.game_status_code==\"I\",mlb.games.0.current_inning_state==\"Top\")),COLOR(mlb.games.0.away_team_color),\" \") }}{{= PAD(mlb.games.0.away_team_abbr,6) }}{{= PADLEFT(mlb.games.0.current_away_score,2) }}{{= PADLEFT(mlb.games.0.current_away_hits,3) }}{{= PADLEFT(mlb.games.0.current_away_errors,3) }}",
-        "{{= IF(OR(mlb.games.0.game_status_code!=\"I\",AND(mlb.games.0.game_status_code=\"I\",mlb.games.0.current_inning_state=\"Bottom\")),COLOR(mlb.games.0.home_team_color),\" \") }}{{= PAD(mlb.games.0.home_team_abbr,6) }}{{= PADLEFT(mlb.games.0.current_home_score,2) }}{{= PADLEFT(mlb.games.0.current_home_hits,3) }}{{= PADLEFT(mlb.games.0.current_home_errors,3) }}"
+        "{{= PAD(SWITCH(mlb.game_status_code,\"P\",\"UPCOMING\",\"F\",\"FINAL\",\"I\",CONCAT(\" \",mlb.current_inning,SWITCH(mlb.current_inning,1,\"ST\",2,\"ND\",3,\"RD\",\"TH\")),\"UNKNOWN\"),8) }}R  H  E ",
+        "{{= IF(OR(mlb.game_status_code!=\"I\",AND(mlb.game_status_code==\"I\",mlb.current_inning_state==\"Top\")),COLOR(mlb.away_team_color),\" \") }}{{= PAD(mlb.away_team_abbr,6) }}{{= PADLEFT(mlb.current_away_score,2) }}{{= PADLEFT(mlb.current_away_hits,3) }}{{= PADLEFT(mlb.current_away_errors,3) }}",
+        "{{= IF(OR(mlb.game_status_code!=\"I\",AND(mlb.game_status_code=\"I\",mlb.current_inning_state=\"Bottom\")),COLOR(mlb.home_team_color),\" \") }}{{= PAD(mlb.home_team_abbr,6) }}{{= PADLEFT(mlb.current_home_score,2) }}{{= PADLEFT(mlb.current_home_hits,3) }}{{= PADLEFT(mlb.current_home_errors,3) }}"
       ],
       "line_metadata": [
         { "alignment": "left", "wrap": false },
